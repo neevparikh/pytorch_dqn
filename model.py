@@ -60,10 +60,11 @@ class DQN_model(torch.nn.Module):
         if random.random() < epsilon:
             return self.action_space.sample()
         else:
-            state_tensor = torch.Tensor(state).unsqueeze(0)
-            action_tensor = self.argmax_over_actions(state_tensor)
-            action = action_tensor.cpu().detach().numpy().flatten()[0]
-            assert self.action_space.contains(action)
+            with torch.no_grad():
+                state_tensor = torch.Tensor(state).unsqueeze(0)
+                action_tensor = self.argmax_over_actions(state_tensor)
+                action = action_tensor.cpu().detach().numpy().flatten()[0]
+                assert self.action_space.contains(action)
             return action
 
 

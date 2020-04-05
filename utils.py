@@ -120,6 +120,11 @@ def sync_networks(target, online, alpha):
 # Thanks to RoshanRane - Pytorch forums
 # (https://discuss.pytorch.org/t/check-gradient-flow-in-network/15063/10)
 # Dec 2018
+# Example: Gradient flow in network
+# writer.add_figure('training/gradient_flow',
+#                   plot_grad_flow(agent.online.named_parameters(),
+#                                  episode),
+#                   global_step=episode)
 def plot_grad_flow(named_parameters, ep=None):
     '''Plots the gradients flowing through different layers in the net during training.
     Can be used for checking for possible gradient vanishing / exploding problems.

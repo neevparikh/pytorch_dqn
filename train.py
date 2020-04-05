@@ -66,49 +66,49 @@ if __name__ == "__main__":
         done = False
         agent.set_epsilon(episode, writer)
 
-        # Collect data from the environment
-        with torch.no_grad():
-            while not done:
-                action = agent.online.act(state, agent.online.epsilon)
-                next_state, reward, done, _ = env.step(action)
-                agent.replay_buffer.append(
-                    Experience(
-                        state, action,
-                        np.clip(reward, -args.reward_clip, args.reward_clip),
-                        next_state, int(done)))
-                state = next_state
-
-        # If not enough data, try again
-        if len(agent.replay_buffer) < args.batchsize:
-            continue
-
-        # Training loop
         cumulative_loss = 0
-        for i in range(args.update_steps):
-            # This is list<experiences>
-            minibatch = random.sample(agent.replay_buffer, args.batchsize)
+        step = 1
+        # Collect data from the environment
+        while not done:
+            action = agent.online.act(state, agent.online.epsilon)
+            next_state, reward, done, _ = env.step(action)
+            agent.replay_buffer.append(
+                Experience(
+                    state, action,
+                    np.clip(reward, -args.reward_clip, args.reward_clip),
+                    next_state, int(done)))
+            state = next_state
 
-            # This is experience<list<states>, list<actions>, ...>
-            minibatch = Experience(*zip(*minibatch))
-            optimizer.zero_grad()
+            # If not enough data, try again
+            if len(agent.replay_buffer) < args.batchsize:
+                continue
 
-            # Get loss
-            loss = agent.loss_func(minibatch, writer, episode)
+            # Training loop
+            for i in range(args.update_steps):
+                # This is list<experiences>
+                minibatch = random.sample(agent.replay_buffer, args.batchsize)
 
-            cumulative_loss += loss.item()
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(agent.online.parameters(),
-                                           args.gradient_clip)
-            # Update parameters
-            optimizer.step()
-            agent.sync_networks()
+                # This is experience<list<states>, list<actions>, ...>
+                minibatch = Experience(*zip(*minibatch))
+                optimizer.zero_grad()
 
-        # Gradient flow in network
-        writer.add_figure('rbf_training/gradient_flow',
-                          plot_grad_flow(agent.online.named_parameters(),
-                                         episode),
-                          global_step=episode)
+                # Get loss
+                loss = agent.loss_func(minibatch, writer, episode)
 
+                cumulative_loss += loss.item()
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(agent.online.parameters(),
+                                               args.gradient_clip)
+                # Update parameters
+                optimizer.step()
+                agent.sync_networks()
+
+            # Average over update steps
+            cumulative_loss /= args.update_steps
+            step += 1
+
+        writer.add_scalar('training/avg_episode_loss',
+                          cumulative_loss / step, episode)
         # Testing policy
         with torch.no_grad():
             # Reset environment
@@ -134,8 +134,6 @@ if __name__ == "__main__":
             print(f"Episode: {episode}, policy_reward: {cumulative_reward}")
 
             # Logging
-            writer.add_scalar('training/episode_loss',
-                              cumulative_loss / args.update_steps, episode)
             writer.add_scalar('validation/policy_reward', cumulative_reward,
                               episode)
 
