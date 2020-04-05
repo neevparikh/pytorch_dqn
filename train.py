@@ -30,6 +30,7 @@ if __name__ == "__main__":
         raise NotImplementedError("DQN for continuous action_spaces hasn't been\
                 implemented")
 
+    # Check if GPU can be used and was asked for
     if args.gpu and torch.cuda.is_available():
         device = torch.device('cuda:0')
     else:
@@ -47,42 +48,46 @@ if __name__ == "__main__":
         "epsilon_decay": args.epsilon_decay,
         "epsilon_decay_start": args.epsilon_decay_start,
     }
-
     agent = DQN_agent(**agent_args)
 
-    optimizer = torch.optim.RMSprop(agent.online.parameters(),
-                                    lr=args.rmsprop_lr)
+    # Initialize optimizer
+    optimizer = torch.optim.Adam(agent.online.parameters(),
+                                    lr=args.lr)
 
+    # Logging for tensorboard
     if args.output_path:
         writer = SummaryWriter(args.output_path)
     else:
         writer = SummaryWriter(comment=args.env)
 
+    # Episode loop
     for episode in range(args.episodes):
         state = env.reset()
         done = False
         agent.set_epsilon(episode, writer)
 
-        agent.online.eval()
-        while not done:
-            action = agent.online.act(state, agent.online.epsilon)
-            next_state, reward, done, _ = env.step(action)
-            agent.replay_buffer.append(
-                Experience(state, action,
-                           np.clip(reward, -args.reward_clip, args.reward_clip),
-                           next_state, int(done)))
-            state = next_state
-        agent.online.train()
+        # Collect data from the environment
+        with torch.no_grad():
+            while not done:
+                action = agent.online.act(state, agent.online.epsilon)
+                next_state, reward, done, _ = env.step(action)
+                agent.replay_buffer.append(
+                    Experience(state, action,
+                               np.clip(reward, -args.reward_clip, args.reward_clip),
+                               next_state, int(done)))
+                state = next_state
 
+        # If not enough data, try again
         if len(agent.replay_buffer) < args.batchsize:
             continue
 
+        # Training loop
         cumulative_loss = 0
         for i in range(args.update_steps):
-            # this is list<experiences>
+            # This is list<experiences>
             minibatch = random.sample(agent.replay_buffer, args.batchsize)
 
-            # this is experience<list<states>, list<actions>, ...>
+            # This is experience<list<states>, list<actions>, ...>
             minibatch = Experience(*zip(*minibatch))
             optimizer.zero_grad()
 
@@ -97,36 +102,39 @@ if __name__ == "__main__":
             optimizer.step()
             agent.sync_networks()
 
+        # Gradient flow in network
         writer.add_figure('rbf_training/gradient_flow',
                           plot_grad_flow(agent.online.named_parameters(),
                                          episode),
                           global_step=episode)
 
         # Testing policy
-        agent.online.eval()
-
-        # Reset environment
-        cumulative_reward = 0
-        state = env.reset()
-        action = agent.online.act(state, 0)
-        done = False
-        render = args.render and (episode % args.render_episodes == 0)
-        # Episode loop
-        while not done:
-            # Take action in env
-            if render:
-                env.render()
-            state, reward, done, _ = env.step(action)
+        with torch.no_grad():
+            # Reset environment
+            cumulative_reward = 0
+            state = env.reset()
             action = agent.online.act(state, 0)
+            done = False
+            render = args.render and (episode % args.render_episodes == 0)
 
-            # Update reward
-            cumulative_reward += reward
+            # Test episode loop
+            while not done:
+                # Take action in env
+                if render:
+                    env.render()
+                state, reward, done, _ = env.step(action)
+                action = agent.online.act(state, 0) # passing in epsilon = 0
 
-        env.close()
-        print(f"Episode: {episode}, policy_reward: {cumulative_reward}")
-        writer.add_scalar('training/episode_loss',
-                          cumulative_loss / args.update_steps, episode)
-        writer.add_scalar('validation/policy_reward', cumulative_reward, episode)
-        agent.online.train()
+                # Update reward
+                cumulative_reward += reward
+
+            env.close() # close viewer
+
+            print(f"Episode: {episode}, policy_reward: {cumulative_reward}")
+
+            # Logging
+            writer.add_scalar('training/episode_loss',
+                              cumulative_loss / args.update_steps, episode)
+            writer.add_scalar('validation/policy_reward', cumulative_reward, episode)
 
     env.close()

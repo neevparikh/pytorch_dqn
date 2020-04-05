@@ -81,8 +81,8 @@ def parse_args():
                         type=int,
                         default=500000,
                         required=False)
-    parser.add_argument('--rmsprop-lr',
-                        help='Learning rate for the RMSProp optimizer',
+    parser.add_argument('--lr',
+                        help='Learning rate for the optimizer',
                         type=float,
                         default=5e-4,
                         required=False)
