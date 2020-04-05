@@ -54,7 +54,7 @@ def parse_args():
     parser.add_argument('--update-steps',
                         help='Number of steps to update for per episode',
                         type=int,
-                        default=100,
+                        default=1,
                         required=False)
     parser.add_argument('--gradient-clip',
                         help='How much to clip the gradients by',
@@ -90,6 +90,10 @@ def parse_args():
                         help='EMA parameter for target network',
                         type=float,
                         default=5e-3,
+                        required=False)
+    parser.add_argument('--vanilla-DQN',
+                        help='Use the vanilla dqn update instead of double DQN',
+                        action='store_true',
                         required=False)
     parser.add_argument('--seed',
                         help='The random seed for this run',

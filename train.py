@@ -47,12 +47,12 @@ if __name__ == "__main__":
         "replay_buffer_size": args.replay_buffer_size,
         "epsilon_decay": args.epsilon_decay,
         "epsilon_decay_start": args.epsilon_decay_start,
+        "double_DQN": not(args.vanilla_DQN),
     }
     agent = DQN_agent(**agent_args)
 
     # Initialize optimizer
-    optimizer = torch.optim.Adam(agent.online.parameters(),
-                                    lr=args.lr)
+    optimizer = torch.optim.Adam(agent.online.parameters(), lr=args.lr)
 
     # Logging for tensorboard
     if args.output_path:
@@ -72,9 +72,10 @@ if __name__ == "__main__":
                 action = agent.online.act(state, agent.online.epsilon)
                 next_state, reward, done, _ = env.step(action)
                 agent.replay_buffer.append(
-                    Experience(state, action,
-                               np.clip(reward, -args.reward_clip, args.reward_clip),
-                               next_state, int(done)))
+                    Experience(
+                        state, action,
+                        np.clip(reward, -args.reward_clip, args.reward_clip),
+                        next_state, int(done)))
                 state = next_state
 
         # If not enough data, try again
@@ -123,18 +124,19 @@ if __name__ == "__main__":
                 if render:
                     env.render()
                 state, reward, done, _ = env.step(action)
-                action = agent.online.act(state, 0) # passing in epsilon = 0
+                action = agent.online.act(state, 0)  # passing in epsilon = 0
 
                 # Update reward
                 cumulative_reward += reward
 
-            env.close() # close viewer
+            env.close()  # close viewer
 
             print(f"Episode: {episode}, policy_reward: {cumulative_reward}")
 
             # Logging
             writer.add_scalar('training/episode_loss',
                               cumulative_loss / args.update_steps, episode)
-            writer.add_scalar('validation/policy_reward', cumulative_reward, episode)
+            writer.add_scalar('validation/policy_reward', cumulative_reward,
+                              episode)
 
     env.close()
