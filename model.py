@@ -151,7 +151,7 @@ class DQN_agent:
                                         num_actions)
             self.target = DQN_MLP_model(device, state_space, action_space,
                                         num_actions)
-        elif model_type == "cnn":
+        elif model_type == "cnn" or model_type == "cnn_render":
             assert num_frames
             self.num_frames = num_frames
             self.online = DQN_CNN_model(device, state_space, action_space,

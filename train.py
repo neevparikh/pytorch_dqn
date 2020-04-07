@@ -2,9 +2,10 @@ import gym
 import numpy as np
 import random
 import torch
+from collections import deque
 from torch.utils.tensorboard import SummaryWriter
 
-from utils import parse_args, plot_grad_flow
+from utils import parse_args, plot_grad_flow, get_state_on_step, get_state_on_reset
 from model import DQN_agent, Experience
 
 if __name__ == "__main__":
@@ -47,10 +48,15 @@ if __name__ == "__main__":
         "replay_buffer_size": args.replay_buffer_size,
         "epsilon_decay": args.epsilon_decay,
         "epsilon_decay_start": args.epsilon_decay_start,
-        "double_DQN": not(args.vanilla_DQN),
+        "double_DQN": not (args.vanilla_DQN),
         "model_type": args.model_type,
+        "num_frames": args.num_frames,
     }
     agent = DQN_agent(**agent_args)
+
+    if args.model_type == 'cnn' or args.model_type == 'cnn_render':
+        assert args.num_frames
+        last_num_frames = deque(maxlen=args.num_frames)
 
     # Initialize optimizer
     optimizer = torch.optim.Adam(agent.online.parameters(), lr=args.lr)
@@ -63,7 +69,8 @@ if __name__ == "__main__":
 
     # Episode loop
     for episode in range(args.episodes):
-        state = env.reset()
+        state = get_state_on_reset(env, args.model_type, last_num_frames,
+                                   args.num_frames)
         done = False
         agent.set_epsilon(episode, writer)
 
@@ -72,12 +79,12 @@ if __name__ == "__main__":
         # Collect data from the environment
         while not done:
             action = agent.online.act(state, agent.online.epsilon)
-            next_state, reward, done, _ = env.step(action)
+            next_state, reward, done, _ = get_state_on_step(
+                env, args.model_type, action, last_num_frames, args.num_frames)
             agent.replay_buffer.append(
-                Experience(
-                    state, action,
-                    np.clip(reward, -args.reward_clip, args.reward_clip),
-                    next_state, int(done)))
+                Experience(state, action,
+                           np.clip(reward, -args.reward_clip, args.reward_clip),
+                           next_state, int(done)))
             state = next_state
 
             # If not enough data, try again
@@ -108,13 +115,14 @@ if __name__ == "__main__":
             cumulative_loss /= args.update_steps
             step += 1
 
-        writer.add_scalar('training/avg_episode_loss',
-                          cumulative_loss / step, episode)
+        writer.add_scalar('training/avg_episode_loss', cumulative_loss / step,
+                          episode)
         # Testing policy
         with torch.no_grad():
             # Reset environment
             cumulative_reward = 0
-            state = env.reset()
+            state = get_state_on_reset(env, args.model_type, last_num_frames,
+                                       args.num_frames)
             action = agent.online.act(state, 0)
             done = False
             render = args.render and (episode % args.render_episodes == 0)
@@ -124,7 +132,10 @@ if __name__ == "__main__":
                 # Take action in env
                 if render:
                     env.render()
-                state, reward, done, _ = env.step(action)
+
+                state, reward, done, _ = get_state_on_step(
+                    env, args.model_type, action, last_num_frames,
+                    args.num_frames)
                 action = agent.online.act(state, 0)  # passing in epsilon = 0
 
                 # Update reward

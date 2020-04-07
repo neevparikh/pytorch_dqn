@@ -14,6 +14,7 @@ transforms = T.Compose([
     T.ToTensor()
 ])
 
+
 def parse_args():
     # Parse input arguments
     # Use --help to see a pretty description of the arguments
@@ -23,11 +24,13 @@ def parse_args():
                         help='The gym environment to train on',
                         type=str,
                         required=True)
-    parser.add_argument('--model_type',
-                        help='Type of architecture',
+    parser.add_argument('--model-type',
+                        help="Type of architecture, cnn_render uses render to \
+                        get image for envs that don't have pixel states like \
+                        CartPole",
                         type=str,
                         default='mlp',
-                        choices=["cnn", "mlp"],
+                        choices=["cnn", "cnn_render", "mlp"],
                         required=True)
     parser.add_argument('--model-path',
                         help='The path to the save the pytorch model',
@@ -54,6 +57,11 @@ def parse_args():
                         help='Render every these many episodes',
                         type=int,
                         default=5,
+                        required=False)
+    parser.add_argument('--num-frames',
+                        help='Number of frames to stack (CNN only)',
+                        type=int,
+                        default=4,
                         required=False)
     parser.add_argument('--episodes',
                         help='Number of episodes to run for',
@@ -147,7 +155,84 @@ def preprocess(img_state, prev_img_state):
     return transforms(processed_state)
 
 
-def get_state(se
+def deque_to_tensor(last_num_frames):
+    """ Convert deque of n frames to tensor """
+    return torch.cat(list(last_num_frames), dim=-1)
+
+
+def get_state_on_step(env, model_type, action, last_num_frames, num_frames):
+    # NOTE: the last_num_frames deque is modified in place here
+    if model_type == 'mlp':
+        return env.step(action)
+    elif model_type == 'cnn':
+        assert num_frames
+        assert last_num_frames
+        next_state, reward, done, info = env.step(action)
+        while True:
+            if len(last_num_frames) == 0:
+                processed_frame = preprocess(next_state, next_state)
+            else:
+                processed_frame = preprocess(next_state, last_num_frames[-1])
+            last_num_frames.append(processed_frame)
+            if len(last_num_frames) == num_frames:
+                break
+        return deque_to_tensor(last_num_frames), reward, done, info
+    elif model_type == 'cnn_render':
+        assert num_frames
+        assert last_num_frames
+        _, reward, done, info = env.step(action)
+        next_frame = torch.from_numpy(
+            env.render(mode='rgb_array').transpose((2, 0, 1)))
+        while True: 
+            if len(last_num_frames) == 0:
+                processed_frame = preprocess(next_frame, next_frame)
+            else:
+                processed_frame = preprocess(next_frame, last_num_frames[-1])
+            last_num_frames.append(processed_frame)
+            if len(last_num_frames) == num_frames:
+                break
+        return deque_to_tensor(last_num_frames), reward, done, info
+    else:
+        raise NotImplementedError(model_type)
+
+
+def get_state_on_reset(env, model_type, last_num_frames, num_frames):
+    # NOTE: the last_num_frames deque is modified in place here
+    if model_type == 'mlp':
+        return env.reset()
+    elif model_type == 'cnn':
+        assert num_frames
+        assert last_num_frames
+        last_num_frames.clear()
+        next_state = env.reset()
+        while True:
+            if len(last_num_frames) == 0:
+                processed_frame = preprocess(next_state, next_state)
+            else:
+                processed_frame = preprocess(next_state, last_num_frames[-1])
+            last_num_frames.append(processed_frame)
+            if len(last_num_frames) == num_frames:
+                break
+        return deque_to_tensor(last_num_frames)
+    elif model_type == 'cnn_render':
+        assert num_frames
+        assert last_num_frames
+        env.reset()
+        last_num_frames.clear()
+        next_frame = torch.from_numpy(
+            env.render(mode='rgb_array').transpose((2, 0, 1)))
+        while True: 
+            if len(last_num_frames) == 0:
+                processed_frame = preprocess(next_frame, next_frame)
+            else:
+                processed_frame = preprocess(next_frame, last_num_frames[-1])
+            last_num_frames.append(processed_frame)
+            if len(last_num_frames) == num_frames:
+                break
+        return deque_to_tensor(last_num_frames)
+    else:
+        raise NotImplementedError(model_type)
+
 
 # Thanks to RoshanRane - Pytorch forums
 # (https://discuss.pytorch.org/t/check-gradient-flow-in-network/15063/10)
