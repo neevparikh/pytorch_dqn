@@ -4,7 +4,15 @@ from matplotlib.lines import Line2D
 import numpy as np
 import torch
 import argparse
+import torchvision.transforms as T
 
+# Define preprocessing routine
+transforms = T.Compose([
+    T.ToPILImage(mode='YCbCr'),
+    T.Lambda(lambda img: img.split()[0]),
+    T.Resize((84, 84)),
+    T.ToTensor()
+])
 
 def parse_args():
     # Parse input arguments
@@ -14,6 +22,12 @@ def parse_args():
     parser.add_argument('--env',
                         help='The gym environment to train on',
                         type=str,
+                        required=True)
+    parser.add_argument('--model_type',
+                        help='Type of architecture',
+                        type=str,
+                        default='mlp',
+                        choices=["cnn", "mlp"],
                         required=True)
     parser.add_argument('--model-path',
                         help='The path to the save the pytorch model',
@@ -116,6 +130,24 @@ def sync_networks(target, online, alpha):
         target_param.data.copy_(alpha * online_param.data +
                                 (1 - alpha) * target_param.data)
 
+
+# Adapted from pytorch tutorials:
+# https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
+def conv2d_size_out(size, kernel_size, stride):
+    return ((size[0] - (kernel_size[0] - 1) - 1) // stride + 1,
+            (size[1] - (kernel_size[1] - 1) - 1) // stride + 1)
+
+
+def preprocess(img_state, prev_img_state):
+    """ Preprocessing as described in the Nature DQN paper (Mnih 2015) """
+    assert torch.is_tensor(img_state)
+    assert torch.is_tensor(prev_img_state)
+    assert torch.is_same_size(img_state, prev_img_state)
+    processed_state = np.maximum(img_state, prev_img_state)
+    return transforms(processed_state)
+
+
+def get_state(se
 
 # Thanks to RoshanRane - Pytorch forums
 # (https://discuss.pytorch.org/t/check-gradient-flow-in-network/15063/10)

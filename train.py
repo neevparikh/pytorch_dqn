@@ -48,6 +48,7 @@ if __name__ == "__main__":
         "epsilon_decay": args.epsilon_decay,
         "epsilon_decay_start": args.epsilon_decay_start,
         "double_DQN": not(args.vanilla_DQN),
+        "model_type": args.model_type,
     }
     agent = DQN_agent(**agent_args)
 

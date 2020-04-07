@@ -3,26 +3,61 @@ import numpy as np
 import random
 from collections import deque, namedtuple
 
-from utils import sync_networks
+from utils import sync_networks, conv2d_size_out
 
 Experience = namedtuple('Experience',
                         ['state', 'action', 'reward', 'next_state', 'done'])
 
 
-class DQN_model(torch.nn.Module):
-    """Docstring for DQN model """
+class DQN_Base_model(torch.nn.Module):
+    """Docstring for DQN MLP model """
 
     def __init__(self, device, state_space, action_space, num_actions):
-        """Defining DQN model
+        """Defining DQN MLP model
         """
         # initialize all parameters
-        super(DQN_model, self).__init__()
+        super(DQN_Base_model, self).__init__()
         self.state_space = state_space
         self.action_space = action_space
-
         self.device = device
         self.num_actions = num_actions
 
+    def build_model(self):
+        # output should be in batchsize x num_actions
+        raise NotImplementedError
+
+    def forward(self, state):
+        raise NotImplementedError
+
+    def max_over_actions(self, state):
+        state = state.to(self.device)
+        return torch.max(self(state), dim=1)
+
+    def argmax_over_actions(self, state):
+        state = state.to(self.device)
+        return torch.argmax(self(state), dim=1)
+
+    def act(self, state, epsilon):
+        if random.random() < epsilon:
+            return self.action_space.sample()
+        else:
+            with torch.no_grad():
+                state_tensor = torch.Tensor(state).unsqueeze(0)
+                action_tensor = self.argmax_over_actions(state_tensor)
+                action = action_tensor.cpu().detach().numpy().flatten()[0]
+                assert self.action_space.contains(action)
+            return action
+
+
+class DQN_MLP_model(DQN_Base_model):
+    """Docstring for DQN MLP model """
+
+    def __init__(self, device, state_space, action_space, num_actions):
+        """Defining DQN MLP model
+        """
+        # initialize all parameters
+        super(DQN_MLP_model, self).__init__(device, state_space, action_space,
+                                            num_actions)
         # architecture
         self.layer_sizes = [(512, 512), (512, 256), (256, 128)]
 
@@ -48,24 +83,56 @@ class DQN_model(torch.nn.Module):
         q_value = self.body(state)
         return q_value
 
-    def max_over_actions(self, state):
-        state = state.to(self.device)
-        return torch.max(self(state), dim=1)
 
-    def argmax_over_actions(self, state):
-        state = state.to(self.device)
-        return torch.argmax(self(state), dim=1)
+class DQN_CNN_model(DQN_Base_model):
+    """Docstring for DQN CNN model """
 
-    def act(self, state, epsilon):
-        if random.random() < epsilon:
-            return self.action_space.sample()
-        else:
-            with torch.no_grad():
-                state_tensor = torch.Tensor(state).unsqueeze(0)
-                action_tensor = self.argmax_over_actions(state_tensor)
-                action = action_tensor.cpu().detach().numpy().flatten()[0]
-                assert self.action_space.contains(action)
-            return action
+    def __init__(self,
+                 device,
+                 state_space,
+                 action_space,
+                 num_actions,
+                 num_frames=4,
+                 final_dense_layer=512,
+                 input_shape=(84, 84)):
+        """Defining DQN CNN model
+        """
+        # initialize all parameters
+        super(DQN_CNN_model, self).__init__(device, state_space, action_space,
+                                            num_actions)
+        self.num_frames = num_frames
+        self.final_dense_layer = final_dense_layer
+        self.input_shape = input_shape
+
+        self.build_model()
+
+    def build_model(self):
+        # output should be in batchsize x num_actions
+        # First layer takes in states
+        layers = [
+            torch.nn.Conv2d(self.num_frames, 32, kernel_size=(8, 8), stride=4),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(32, 64, kernel_size=(4, 4), stride=2),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(64, 64, kernel_size=(3, 3), stride=1),
+            torch.nn.ReLU()
+        ]
+
+        final_size = conv2d_size_out(self.input_shape, (8, 8), 4)
+        final_size = conv2d_size_out(final_size, (4, 4), 2)
+        final_size = conv2d_size_out(final_size, (3, 3), 1)
+
+        layers.extend([
+            torch.nn.Linear(final_size, self.final_dense_layer),
+            torch.nn.ReLU(),
+            torch.nn.Linear(self.final_dense_layer, self.num_actions)
+        ])
+
+        self.body = torch.nn.Sequential(*layers)
+
+    def forward(self, state):
+        q_value = self.body(state)
+        return q_value
 
 
 class DQN_agent:
@@ -73,14 +140,28 @@ class DQN_agent:
 
     def __init__(self, device, state_space, action_space, num_actions,
                  target_moving_average, gamma, replay_buffer_size,
-                 epsilon_decay, epsilon_decay_start, double_DQN):
-        """Defining DQN model
+                 epsilon_decay, epsilon_decay_start, double_DQN,
+                 model_type="mlp", num_frames=None):
+        """Defining DQN agent
         """
         self.replay_buffer = deque(maxlen=replay_buffer_size)
 
-        self.online = DQN_model(device, state_space, action_space, num_actions)
+        if model_type == "mlp":
+            self.online = DQN_MLP_model(device, state_space, action_space,
+                                        num_actions)
+            self.target = DQN_MLP_model(device, state_space, action_space,
+                                        num_actions)
+        elif model_type == "cnn":
+            assert num_frames
+            self.num_frames = num_frames
+            self.online = DQN_CNN_model(device, state_space, action_space,
+                                        num_actions, num_frames=num_frames)
+            self.target = DQN_CNN_model(device, state_space, action_space,
+                                        num_actions, num_frames=num_frames)
+        else: 
+            raise NotImplementedError(model_type)
+
         self.online = self.online.to(device)
-        self.target = DQN_model(device, state_space, action_space, num_actions)
         self.target = self.target.to(device)
 
         self.target.load_state_dict(self.online.state_dict())
@@ -91,7 +172,7 @@ class DQN_agent:
         self.epsilon_decay = epsilon_decay
         self.epsilon_decay_start = epsilon_decay_start
         self.device = device
-        
+
         self.double_DQN = double_DQN
 
     def loss_func(self, minibatch, writer=None, writer_step=None):
