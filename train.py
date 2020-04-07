@@ -57,6 +57,8 @@ if __name__ == "__main__":
     if args.model_type == 'cnn' or args.model_type == 'cnn_render':
         assert args.num_frames
         last_num_frames = deque(maxlen=args.num_frames)
+    else:
+        last_num_frames = None
 
     # Initialize optimizer
     optimizer = torch.optim.Adam(agent.online.parameters(), lr=args.lr)
@@ -69,8 +71,8 @@ if __name__ == "__main__":
 
     # Episode loop
     for episode in range(args.episodes):
-        state = get_state_on_reset(env, args.model_type, last_num_frames,
-                                   args.num_frames)
+        state, prev_frame = get_state_on_reset(env, args.model_type,
+                                               last_num_frames, args.num_frames)
         done = False
         agent.set_epsilon(episode, writer)
 
@@ -79,12 +81,17 @@ if __name__ == "__main__":
         # Collect data from the environment
         while not done:
             action = agent.online.act(state, agent.online.epsilon)
-            next_state, reward, done, _ = get_state_on_step(
-                env, args.model_type, action, last_num_frames, args.num_frames)
+            next_state, reward, done, _, prev_frame = get_state_on_step(
+                env, args.model_type, action, last_num_frames, args.num_frames,
+                prev_frame)
+            if args.reward_clip:
+                clipped_reward = np.clip(reward, -args.reward_clip,
+                                         args.reward_clip)
+            else:
+                clipped_reward = reward
             agent.replay_buffer.append(
-                Experience(state, action,
-                           np.clip(reward, -args.reward_clip, args.reward_clip),
-                           next_state, int(done)))
+                Experience(state, action, clipped_reward, next_state,
+                           int(done)))
             state = next_state
 
             # If not enough data, try again
@@ -121,11 +128,13 @@ if __name__ == "__main__":
         with torch.no_grad():
             # Reset environment
             cumulative_reward = 0
-            state = get_state_on_reset(env, args.model_type, last_num_frames,
-                                       args.num_frames)
+            state, prev_frame = get_state_on_reset(env, args.model_type,
+                                                   last_num_frames,
+                                                   args.num_frames)
             action = agent.online.act(state, 0)
             done = False
-            render = args.render and (episode % args.render_episodes == 0)
+            render = args.render and (episode % args.render_episodes == 0) and (
+                episode > args.epsilon_decay_start)
 
             # Test episode loop
             while not done:
@@ -133,9 +142,9 @@ if __name__ == "__main__":
                 if render:
                     env.render()
 
-                state, reward, done, _ = get_state_on_step(
+                state, reward, done, _, prev_frame = get_state_on_step(
                     env, args.model_type, action, last_num_frames,
-                    args.num_frames)
+                    args.num_frames, prev_frame)
                 action = agent.online.act(state, 0)  # passing in epsilon = 0
 
                 # Update reward

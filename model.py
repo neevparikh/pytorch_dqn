@@ -109,39 +109,48 @@ class DQN_CNN_model(DQN_Base_model):
     def build_model(self):
         # output should be in batchsize x num_actions
         # First layer takes in states
-        layers = [
+        self.body = torch.nn.Sequential(*[
             torch.nn.Conv2d(self.num_frames, 32, kernel_size=(8, 8), stride=4),
             torch.nn.ReLU(),
             torch.nn.Conv2d(32, 64, kernel_size=(4, 4), stride=2),
             torch.nn.ReLU(),
             torch.nn.Conv2d(64, 64, kernel_size=(3, 3), stride=1),
             torch.nn.ReLU()
-        ]
+        ])
 
         final_size = conv2d_size_out(self.input_shape, (8, 8), 4)
         final_size = conv2d_size_out(final_size, (4, 4), 2)
         final_size = conv2d_size_out(final_size, (3, 3), 1)
 
-        layers.extend([
-            torch.nn.Linear(final_size, self.final_dense_layer),
+        self.head = torch.nn.Sequential(*[
+            torch.nn.Linear(final_size[0] * final_size[1] *
+                            64, self.final_dense_layer),
             torch.nn.ReLU(),
             torch.nn.Linear(self.final_dense_layer, self.num_actions)
         ])
 
-        self.body = torch.nn.Sequential(*layers)
-
     def forward(self, state):
-        q_value = self.body(state)
+        cnn_output = self.body(state)
+        q_value = self.head(cnn_output.view(cnn_output.size(0), -1))
         return q_value
 
 
 class DQN_agent:
     """Docstring for DQN agent """
 
-    def __init__(self, device, state_space, action_space, num_actions,
-                 target_moving_average, gamma, replay_buffer_size,
-                 epsilon_decay, epsilon_decay_start, double_DQN,
-                 model_type="mlp", num_frames=None):
+    def __init__(self,
+                 device,
+                 state_space,
+                 action_space,
+                 num_actions,
+                 target_moving_average,
+                 gamma,
+                 replay_buffer_size,
+                 epsilon_decay,
+                 epsilon_decay_start,
+                 double_DQN,
+                 model_type="mlp",
+                 num_frames=None):
         """Defining DQN agent
         """
         self.replay_buffer = deque(maxlen=replay_buffer_size)
@@ -154,11 +163,17 @@ class DQN_agent:
         elif model_type == "cnn" or model_type == "cnn_render":
             assert num_frames
             self.num_frames = num_frames
-            self.online = DQN_CNN_model(device, state_space, action_space,
-                                        num_actions, num_frames=num_frames)
-            self.target = DQN_CNN_model(device, state_space, action_space,
-                                        num_actions, num_frames=num_frames)
-        else: 
+            self.online = DQN_CNN_model(device,
+                                        state_space,
+                                        action_space,
+                                        num_actions,
+                                        num_frames=num_frames)
+            self.target = DQN_CNN_model(device,
+                                        state_space,
+                                        action_space,
+                                        num_actions,
+                                        num_frames=num_frames)
+        else:
             raise NotImplementedError(model_type)
 
         self.online = self.online.to(device)
@@ -173,12 +188,19 @@ class DQN_agent:
         self.epsilon_decay_start = epsilon_decay_start
         self.device = device
 
+        self.model_type = model_type
         self.double_DQN = double_DQN
 
     def loss_func(self, minibatch, writer=None, writer_step=None):
         # Make tensors
-        state_tensor = torch.Tensor(minibatch.state).to(self.device)
-        next_state_tensor = torch.Tensor(minibatch.next_state).to(self.device)
+        if self.model_type == 'mlp':
+            state_tensor = torch.Tensor(minibatch.state).to(self.device)
+            next_state_tensor = torch.Tensor(minibatch.next_state).to(
+                self.device)
+        elif self.model_type == 'cnn' or self.model_type == 'cnn_render':
+            state_tensor = torch.stack(minibatch.state, dim=0).to(self.device)
+            next_state_tensor = torch.stack(minibatch.next_state,
+                                          dim=0).to(self.device)
         action_tensor = torch.Tensor(minibatch.action).to(self.device)
         reward_tensor = torch.Tensor(minibatch.reward).to(self.device)
         done_tensor = torch.Tensor(minibatch.done).to(self.device)
@@ -204,11 +226,11 @@ class DQN_agent:
 
         # Logging
         if writer:
-            writer.add_scalar('training/avg_q_label', q_label_batch.mean(),
+            writer.add_scalar('training/batch_q_label', q_label_batch.mean(),
                               writer_step)
-            writer.add_scalar('training/avg_q_pred', q_pred_batch.mean(),
+            writer.add_scalar('training/batch_q_pred', q_pred_batch.mean(),
                               writer_step)
-            writer.add_scalar('training/avg_reward', reward_tensor.mean(),
+            writer.add_scalar('training/batch_reward', reward_tensor.mean(),
                               writer_step)
         return torch.nn.functional.mse_loss(q_label_batch, q_pred_batch)
 

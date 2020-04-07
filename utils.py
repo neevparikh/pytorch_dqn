@@ -6,14 +6,6 @@ import torch
 import argparse
 import torchvision.transforms as T
 
-# Define preprocessing routine
-transforms = T.Compose([
-    T.ToPILImage(mode='YCbCr'),
-    T.Lambda(lambda img: img.split()[0]),
-    T.Resize((84, 84)),
-    T.ToTensor()
-])
-
 
 def parse_args():
     # Parse input arguments
@@ -84,9 +76,10 @@ def parse_args():
                         default=2.5,
                         required=False)
     parser.add_argument('--reward-clip',
-                        help='How much to clip reward, clipped in [-rc, rc]',
+                        help='How much to clip reward, clipped in [-rc, rc], 0 \
+                        results in unclipped',
                         type=float,
-                        default=20,
+                        default=0,
                         required=False)
     parser.add_argument('--epsilon-decay',
                         help='Parameter for epsilon decay exploration',
@@ -145,93 +138,81 @@ def conv2d_size_out(size, kernel_size, stride):
     return ((size[0] - (kernel_size[0] - 1) - 1) // stride + 1,
             (size[1] - (kernel_size[1] - 1) - 1) // stride + 1)
 
+# Define preprocessing routine
+transforms = T.Compose([
+    T.ToPILImage(mode='YCbCr'),
+    T.Lambda(lambda img: img.split()[0]),
+    T.Resize((84, 84)),
+    T.ToTensor()
+])
 
 def preprocess(img_state, prev_img_state):
     """ Preprocessing as described in the Nature DQN paper (Mnih 2015) """
-    assert torch.is_tensor(img_state)
-    assert torch.is_tensor(prev_img_state)
-    assert torch.is_same_size(img_state, prev_img_state)
     processed_state = np.maximum(img_state, prev_img_state)
     return transforms(processed_state)
 
 
 def deque_to_tensor(last_num_frames):
     """ Convert deque of n frames to tensor """
-    return torch.cat(list(last_num_frames), dim=-1)
+    return torch.cat(list(last_num_frames), dim=0)
 
 
-def get_state_on_step(env, model_type, action, last_num_frames, num_frames):
+def get_state_on_step(env, model_type, action, last_num_frames, num_frames,
+                      prev_frame):
     # NOTE: the last_num_frames deque is modified in place here
     if model_type == 'mlp':
-        return env.step(action)
+        return (*env.step(action), None)
     elif model_type == 'cnn':
         assert num_frames
         assert last_num_frames
-        next_state, reward, done, info = env.step(action)
-        while True:
-            if len(last_num_frames) == 0:
-                processed_frame = preprocess(next_state, next_state)
-            else:
-                processed_frame = preprocess(next_state, last_num_frames[-1])
-            last_num_frames.append(processed_frame)
-            if len(last_num_frames) == num_frames:
-                break
-        return deque_to_tensor(last_num_frames), reward, done, info
+        next_frame, reward, done, info = env.step(action)
     elif model_type == 'cnn_render':
         assert num_frames
         assert last_num_frames
         _, reward, done, info = env.step(action)
         next_frame = torch.from_numpy(
-            env.render(mode='rgb_array').transpose((2, 0, 1)))
-        while True: 
-            if len(last_num_frames) == 0:
-                processed_frame = preprocess(next_frame, next_frame)
-            else:
-                processed_frame = preprocess(next_frame, last_num_frames[-1])
-            last_num_frames.append(processed_frame)
-            if len(last_num_frames) == num_frames:
-                break
-        return deque_to_tensor(last_num_frames), reward, done, info
+            np.ascontiguousarray(
+                env.render(mode='rgb_array').transpose((2, 0, 1))))
+        env.close()
     else:
         raise NotImplementedError(model_type)
+    if prev_frame is None:
+        prev_frame = next_frame
+    while True:
+        if len(last_num_frames) == 0:
+            processed_frame = preprocess(next_frame, next_frame)
+        else:
+            processed_frame = preprocess(next_frame, prev_frame)
+        last_num_frames.append(processed_frame)
+        if len(last_num_frames) == num_frames:
+            break
+    return deque_to_tensor(last_num_frames), reward, done, info, next_frame
 
 
 def get_state_on_reset(env, model_type, last_num_frames, num_frames):
     # NOTE: the last_num_frames deque is modified in place here
     if model_type == 'mlp':
-        return env.reset()
+        return env.reset(), None
     elif model_type == 'cnn':
         assert num_frames
-        assert last_num_frames
         last_num_frames.clear()
-        next_state = env.reset()
-        while True:
-            if len(last_num_frames) == 0:
-                processed_frame = preprocess(next_state, next_state)
-            else:
-                processed_frame = preprocess(next_state, last_num_frames[-1])
-            last_num_frames.append(processed_frame)
-            if len(last_num_frames) == num_frames:
-                break
-        return deque_to_tensor(last_num_frames)
+        next_frame = env.reset()
     elif model_type == 'cnn_render':
         assert num_frames
-        assert last_num_frames
-        env.reset()
         last_num_frames.clear()
+        env.reset()
         next_frame = torch.from_numpy(
-            env.render(mode='rgb_array').transpose((2, 0, 1)))
-        while True: 
-            if len(last_num_frames) == 0:
-                processed_frame = preprocess(next_frame, next_frame)
-            else:
-                processed_frame = preprocess(next_frame, last_num_frames[-1])
-            last_num_frames.append(processed_frame)
-            if len(last_num_frames) == num_frames:
-                break
-        return deque_to_tensor(last_num_frames)
+            np.ascontiguousarray(
+                env.render(mode='rgb_array').transpose((2, 0, 1))))
+        env.close()
     else:
         raise NotImplementedError(model_type)
+    while True:
+        processed_frame = preprocess(next_frame, next_frame)
+        last_num_frames.append(processed_frame)
+        if len(last_num_frames) == num_frames:
+            break
+    return deque_to_tensor(last_num_frames), next_frame
 
 
 # Thanks to RoshanRane - Pytorch forums
