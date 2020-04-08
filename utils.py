@@ -1,4 +1,3 @@
-from copy import deepcopy
 from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
 import numpy as np
@@ -87,9 +86,14 @@ def parse_args():
                         default=0,
                         required=False)
     parser.add_argument('--epsilon-decay',
-                        help='Parameter for epsilon decay exploration',
-                        type=float,
-                        default=2.75,
+                        help='Parameter for epsilon decay',
+                        type=int,
+                        default=1e6,
+                        required=False)
+    parser.add_argument('--epsilon-decay-end',
+                        help='Parameter for epsilon decay end',
+                        type=int,
+                        default=0.1,
                         required=False)
     parser.add_argument('--replay-buffer-size',
                         help='Max size of replay buffer',
@@ -223,7 +227,7 @@ def get_state_on_reset(env, model_type, last_num_frames, num_frames):
 #                   plot_grad_flow(agent.online.named_parameters(),
 #                                  episode),
 #                   global_step=episode)
-def plot_grad_flow(named_parameters, ep=None):
+def plot_grad_flow(named_parameters):
     '''Plots the gradients flowing through different layers in the net during training.
     Can be used for checking for possible gradient vanishing / exploding problems.
     

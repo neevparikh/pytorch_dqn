@@ -5,7 +5,7 @@ import torch
 from collections import deque
 from torch.utils.tensorboard import SummaryWriter
 
-from utils import parse_args, plot_grad_flow, get_state_on_step, get_state_on_reset
+from utils import parse_args, get_state_on_step, get_state_on_reset
 from model import DQN_agent, Experience
 
 if __name__ == "__main__":
@@ -25,7 +25,7 @@ if __name__ == "__main__":
     if type(args.env) == str:
         env = gym.make(args.env)
     else:
-        env = env
+        env = args.env
 
     if type(env.action_space) != gym.spaces.Discrete:
         raise NotImplementedError("DQN for continuous action_spaces hasn't been\
@@ -47,7 +47,7 @@ if __name__ == "__main__":
         "gamma": args.gamma,
         "replay_buffer_size": args.replay_buffer_size,
         "epsilon_decay": args.epsilon_decay,
-        "epsilon_decay_start": args.epsilon_decay_start,
+        "epsilon_decay_end": args.epsilon_decay_end,
         "warmup_period": args.warmup_period,
         "double_DQN": not (args.vanilla_DQN),
         "model_type": args.model_type,
@@ -71,16 +71,18 @@ if __name__ == "__main__":
         writer = SummaryWriter(comment=args.env)
 
     # Episode loop
+    global_steps = 0
     for episode in range(args.episodes):
         state, prev_frame = get_state_on_reset(env, args.model_type,
                                                last_num_frames, args.num_frames)
         done = False
-        agent.set_epsilon(episode, writer)
+        agent.set_epsilon(episode, global_steps, writer)
 
         cumulative_loss = 0
         step = 1
         # Collect data from the environment
         while not done:
+            global_steps += 1
             action = agent.online.act(state, agent.online.epsilon)
             next_state, reward, done, _, prev_frame = get_state_on_step(
                 env, args.model_type, action, last_num_frames, args.num_frames,
@@ -96,8 +98,8 @@ if __name__ == "__main__":
             state = next_state
 
             # If not enough data, try again
-            if len(agent.replay_buffer) < args.batchsize or len(
-                    agent.replay_buffer) < args.warmup_period:
+            if len(agent.replay_buffer
+                  ) < args.batchsize or global_steps < args.warmup_period:
                 continue
 
             # Training loop
@@ -126,6 +128,10 @@ if __name__ == "__main__":
 
         writer.add_scalar('training/avg_episode_loss', cumulative_loss / step,
                           episode)
+
+        if len(agent.replay_buffer
+              ) < args.batchsize or global_steps < args.warmup_period:
+            continue
         # Testing policy
         with torch.no_grad():
             # Reset environment
@@ -135,8 +141,7 @@ if __name__ == "__main__":
                                                    args.num_frames)
             action = agent.online.act(state, 0)
             done = False
-            render = args.render and (episode % args.render_episodes == 0) and (
-                episode > args.epsilon_decay_start)
+            render = args.render and (episode % args.render_episodes == 0)
 
             # Test episode loop
             while not done:
@@ -161,3 +166,5 @@ if __name__ == "__main__":
                               episode)
 
     env.close()
+    if args.model_path:
+        torch.save(agent.online, f"{args.model_path}/latest.pth")
