@@ -48,6 +48,7 @@ if __name__ == "__main__":
         "replay_buffer_size": args.replay_buffer_size,
         "epsilon_decay": args.epsilon_decay,
         "epsilon_decay_start": args.epsilon_decay_start,
+        "warmup_period": args.warmup_period,
         "double_DQN": not (args.vanilla_DQN),
         "model_type": args.model_type,
         "num_frames": args.num_frames,
@@ -95,7 +96,8 @@ if __name__ == "__main__":
             state = next_state
 
             # If not enough data, try again
-            if len(agent.replay_buffer) < args.batchsize:
+            if len(agent.replay_buffer) < args.batchsize or len(
+                    agent.replay_buffer) < args.warmup_period:
                 continue
 
             # Training loop

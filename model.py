@@ -148,6 +148,7 @@ class DQN_agent:
                  replay_buffer_size,
                  epsilon_decay,
                  epsilon_decay_start,
+                 warmup_period,
                  double_DQN,
                  model_type="mlp",
                  num_frames=None):
@@ -200,7 +201,7 @@ class DQN_agent:
         elif self.model_type == 'cnn' or self.model_type == 'cnn_render':
             state_tensor = torch.stack(minibatch.state, dim=0).to(self.device)
             next_state_tensor = torch.stack(minibatch.next_state,
-                                          dim=0).to(self.device)
+                                            dim=0).to(self.device)
         action_tensor = torch.Tensor(minibatch.action).to(self.device)
         reward_tensor = torch.Tensor(minibatch.reward).to(self.device)
         done_tensor = torch.Tensor(minibatch.done).to(self.device)
@@ -238,13 +239,14 @@ class DQN_agent:
         sync_networks(self.target, self.online, self.target_moving_average)
 
     def set_epsilon(self, episode, writer=None):
-        if episode > self.epsilon_decay_start:
+        if episode < self.epsilon_decay_start or len(
+                self.replay_buffer) < self.warmup_period:
+            self.online.epsilon = 1
+            self.target.epsilon = 1
+        else:
             self.online.epsilon = (1 + episode - self.epsilon_decay_start)**(
                 -1 / self.epsilon_decay)
             self.target.epsilon = (1 + episode - self.epsilon_decay_start)**(
                 -1 / self.epsilon_decay)
-        else:
-            self.online.epsilon = 1
-            self.target.epsilon = 1
         if writer:
             writer.add_scalar('training/epsilon', self.online.epsilon, episode)

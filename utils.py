@@ -60,6 +60,11 @@ def parse_args():
                         type=int,
                         default=2000,
                         required=False)
+    parser.add_argument('--warmup-period',
+                        help='Number of steps to act randomly and not train',
+                        type=int,
+                        default=50000,
+                        required=False)
     parser.add_argument('--batchsize',
                         help='Number of experiences sampled from replay buffer',
                         type=int,
@@ -85,11 +90,6 @@ def parse_args():
                         help='Parameter for epsilon decay exploration',
                         type=float,
                         default=2.75,
-                        required=False)
-    parser.add_argument('--epsilon-decay-start',
-                        help='After this episode, epsilon decay starts',
-                        type=float,
-                        default=5,
                         required=False)
     parser.add_argument('--replay-buffer-size',
                         help='Max size of replay buffer',
