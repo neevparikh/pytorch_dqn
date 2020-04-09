@@ -5,8 +5,9 @@ import torch
 from collections import deque
 from torch.utils.tensorboard import SummaryWriter
 
-from utils import parse_args, get_state_on_step, get_state_on_reset
-from model import DQN_agent, Experience
+from pix2sym.utils.dqn_utils import parse_args, get_state_on_step, get_state_on_reset
+from pix2sym.baselines.pytorch_dqn.model import DQN_agent, Experience
+from pix2sym.ataritools.envs.montezumaenv import MontezumaEnv
 
 if __name__ == "__main__":
     args = parse_args()
@@ -22,10 +23,12 @@ if __name__ == "__main__":
     np.random.seed(args.seed)
 
     # Initialize environment
-    if type(args.env) == str:
+    if args.env:
         env = gym.make(args.env)
-    else:
-        env = args.env
+    elif args.env == "MontezumaAnnotated":
+        env = MontezumaEnv(seed=args.seed, annotated_ram_obs=True)
+    else: 
+        raise ValueError("Env not recognized")
 
     if type(env.action_space) != gym.spaces.Discrete:
         raise NotImplementedError("DQN for continuous action_spaces hasn't been\
@@ -33,9 +36,9 @@ if __name__ == "__main__":
 
     # Check if GPU can be used and was asked for
     if args.gpu and torch.cuda.is_available():
-        device = torch.device('cuda:0')
+        device = torch.device('cuda:0')  # pylint: disable=no-member
     else:
-        device = torch.device('cpu')
+        device = torch.device('cpu')  # pylint: disable=no-member
 
     # Initialize model
     agent_args = {
