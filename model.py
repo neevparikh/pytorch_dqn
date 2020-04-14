@@ -246,9 +246,9 @@ class DQN_agent:
         else:
             self.online.epsilon = max(
                 self.epsilon_decay_end,
-                1 - (global_steps - self.epsilon_decay) / self.epsilon_decay)
+                1 - (global_steps - self.warmup_period) / self.epsilon_decay)
             self.target.epsilon = max(
                 self.epsilon_decay_end,
-                1 - (global_steps - self.epsilon_decay) / self.epsilon_decay)
+                1 - (global_steps - self.warmup_period) / self.epsilon_decay)
         if writer:
             writer.add_scalar('training/epsilon', self.online.epsilon, episode)
