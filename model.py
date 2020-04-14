@@ -59,7 +59,7 @@ class DQN_MLP_model(DQN_Base_model):
         super(DQN_MLP_model, self).__init__(device, state_space, action_space,
                                             num_actions)
         # architecture
-        self.layer_sizes = [(512, 512), (512, 256), (256, 128)]
+        self.layer_sizes = [(768, 768), (768, 768), (768, 512)]
 
         self.build_model()
 
@@ -78,6 +78,10 @@ class DQN_MLP_model(DQN_Base_model):
                                       self.num_actions))
 
         self.body = torch.nn.Sequential(*layers)
+
+        trainable_parameters = sum(
+            p.numel() for p in self.parameters() if p.requires_grad)
+        print(f"Number of trainable parameters: {trainable_parameters}")
 
     def forward(self, state):
         q_value = self.body(state)
@@ -128,6 +132,11 @@ class DQN_CNN_model(DQN_Base_model):
             torch.nn.ReLU(),
             torch.nn.Linear(self.final_dense_layer, self.num_actions)
         ])
+
+        trainable_parameters = sum(
+            p.numel() for p in self.parameters() if p.requires_grad)
+        print(f"Number of trainable parameters: {trainable_parameters}")
+
 
     def forward(self, state):
         cnn_output = self.body(state)
