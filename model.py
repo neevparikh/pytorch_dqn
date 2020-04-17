@@ -248,7 +248,7 @@ class DQN_agent:
     def sync_networks(self):
         sync_networks(self.target, self.online, self.target_moving_average)
 
-    def set_epsilon(self, episode, global_steps, writer=None):
+    def set_epsilon(self, global_steps, writer=None):
         if global_steps < self.warmup_period:
             self.online.epsilon = 1
             self.target.epsilon = 1
@@ -260,4 +260,4 @@ class DQN_agent:
                 self.epsilon_decay_end,
                 1 - (global_steps - self.warmup_period) / self.epsilon_decay)
         if writer:
-            writer.add_scalar('training/epsilon', self.online.epsilon, episode)
+            writer.add_scalar('training/epsilon', self.online.epsilon, global_steps)

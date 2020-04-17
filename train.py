@@ -2,6 +2,7 @@ import gym
 import numpy as np
 import random
 import torch
+import os
 from collections import deque
 from torch.utils.tensorboard import SummaryWriter
 
@@ -72,11 +73,12 @@ if __name__ == "__main__":
 
     # Episode loop
     global_steps = 0
-    for episode in range(args.episodes):
+    episode = 0
+    while global_steps < args.max_steps:
         state, prev_frame = get_state_on_reset(env, args.model_type,
                                                last_num_frames, args.num_frames)
         done = False
-        agent.set_epsilon(episode, global_steps, writer)
+        agent.set_epsilon(global_steps, writer)
 
         cumulative_loss = 0
         step = 1
@@ -131,6 +133,7 @@ if __name__ == "__main__":
 
         if len(agent.replay_buffer
               ) < args.batchsize or global_steps < args.warmup_period:
+            episode += 1
             continue
         # Testing policy
         with torch.no_grad():
@@ -159,12 +162,15 @@ if __name__ == "__main__":
 
             env.close()  # close viewer
 
-            print(f"Episode: {episode}, policy_reward: {cumulative_reward}")
+            print(f"Episode: {episode}, steps: {global_steps}, policy_reward: {cumulative_reward}")
 
             # Logging
             writer.add_scalar('validation/policy_reward', cumulative_reward,
                               episode)
+            episode += 1
 
     env.close()
     if args.model_path:
+        if not os.path.isdir(args.model_path):
+            os.makedirs(args.model_path)
         torch.save(agent.online, f"{args.model_path}/latest.pth")

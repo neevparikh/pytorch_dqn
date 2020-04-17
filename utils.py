@@ -54,8 +54,8 @@ def parse_args():
                         type=int,
                         default=4,
                         required=False)
-    parser.add_argument('--episodes',
-                        help='Number of episodes to run for',
+    parser.add_argument('--max-steps',
+                        help='Number of steps to run for',
                         type=int,
                         default=2000,
                         required=False)

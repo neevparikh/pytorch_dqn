@@ -8,6 +8,6 @@ python train.py \
 --batchsize 32 \
 --replay-buffer-size 100000 \
 --warmup-period 1000  \
---episodes 2000 \
+--max-steps 2000 \
 --reward-clip 1 \
 --model-path ./saved_models
