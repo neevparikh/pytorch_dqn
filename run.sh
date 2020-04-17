@@ -7,7 +7,8 @@ python train.py \
 --lr 0.0005 \
 --batchsize 32 \
 --replay-buffer-size 100000 \
---warmup-period 1000  \
---max-steps 9000 \
+--warmup-period 500  \
+--max-steps 20000 \
 --reward-clip 1 \
+--epsilon-decay 10000 \
 --model-path ./saved_models

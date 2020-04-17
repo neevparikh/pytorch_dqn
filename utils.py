@@ -89,7 +89,7 @@ def parse_args():
     parser.add_argument('--epsilon-decay',
                         help='Parameter for epsilon decay',
                         type=int,
-                        default=1e6,
+                        default=1e3,
                         required=False)
     parser.add_argument('--epsilon-decay-end',
                         help='Parameter for epsilon decay end',
