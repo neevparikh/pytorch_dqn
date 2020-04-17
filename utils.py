@@ -4,6 +4,7 @@ import numpy as np
 import torch
 import argparse
 import torchvision.transforms as T
+from datetime import datetime
 
 
 def parse_args():
@@ -257,3 +258,10 @@ def plot_grad_flow(named_parameters):
         Line2D([0], [0], color="k", lw=4)
     ], ['max-gradient', 'mean-gradient', 'zero-gradient'])
     return plt.gcf()
+
+def append_timestamp(string, fmt_string=None):
+    now = datetime.now()
+    if fmt_string: 
+        return string + "_" + now.strftime(fmt_string)
+    else:
+        return string + "_" + str(now).replace(" ", "_")

@@ -6,7 +6,7 @@ import os
 from collections import deque
 from torch.utils.tensorboard import SummaryWriter
 
-from utils import parse_args, get_state_on_step, get_state_on_reset
+from utils import parse_args, get_state_on_step, get_state_on_reset, append_timestamp
 from model import DQN_agent, Experience
 
 if __name__ == "__main__":
@@ -30,7 +30,7 @@ if __name__ == "__main__":
 
     if type(env.action_space) != gym.spaces.Discrete:
         raise NotImplementedError("DQN for continuous action_spaces hasn't been\
-                implemented")
+                implemented"                            )
 
     # Check if GPU can be used and was asked for
     if args.gpu and torch.cuda.is_available():
@@ -162,7 +162,9 @@ if __name__ == "__main__":
 
             env.close()  # close viewer
 
-            print(f"Episode: {episode}, steps: {global_steps}, policy_reward: {cumulative_reward}")
+            print(
+                f"Episode: {episode}, steps: {global_steps}, policy_reward: {cumulative_reward}"
+            )
 
             # Logging
             writer.add_scalar('validation/policy_reward', cumulative_reward,
@@ -173,4 +175,5 @@ if __name__ == "__main__":
     if args.model_path:
         if not os.path.isdir(args.model_path):
             os.makedirs(args.model_path)
-        torch.save(agent.online, f"{args.model_path}/latest.pth")
+        torch.save(agent.online,
+                   append_timestamp(f"{args.model_path}/{args.env}") + ".pth")
