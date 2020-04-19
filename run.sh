@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-python train.py \
---env "Pong-v0" \
+python3 train.py \
+--env "SpaceInvaders-v0" \
 --model-type cnn \
 --gpu \
 --seed 5 \
@@ -10,4 +10,5 @@ python train.py \
 --warmup-period 50000  \
 --episodes 2000 \
 --reward-clip 1 \
---model-path ./saved_models
+--model-path ./saved_models \
+--render
