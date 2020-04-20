@@ -30,7 +30,7 @@ if __name__ == "__main__":
 
     if type(env.action_space) != gym.spaces.Discrete:
         raise NotImplementedError("DQN for continuous action_spaces hasn't been\
-                implemented"                            )
+                implemented")
 
     # Check if GPU can be used and was asked for
     if args.gpu and torch.cuda.is_available():
