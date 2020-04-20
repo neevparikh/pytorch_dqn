@@ -75,6 +75,7 @@ if __name__ == "__main__":
     global_steps = 0
     episode = 0
     while global_steps < args.max_steps:
+        print(f"Episode: {episode}, steps: {global_steps}")
         state, prev_frame = get_state_on_reset(env, args.model_type,
                                                last_num_frames, args.num_frames)
         done = False
@@ -135,41 +136,41 @@ if __name__ == "__main__":
               ) < args.batchsize or global_steps < args.warmup_period:
             episode += 1
             continue
+
         # Testing policy
-        with torch.no_grad():
-            # Reset environment
-            cumulative_reward = 0
-            state, prev_frame = get_state_on_reset(env, args.model_type,
-                                                   last_num_frames,
-                                                   args.num_frames)
-            action = agent.online.act(state, 0)
-            done = False
-            render = args.render and (episode % args.render_episodes == 0)
+        if global_steps % args.test_policy_steps == 0:
+            with torch.no_grad():
+                # Reset environment
+                cumulative_reward = 0
+                state, prev_frame = get_state_on_reset(env, args.model_type,
+                                                       last_num_frames,
+                                                       args.num_frames)
+                action = agent.online.act(state, 0)
+                done = False
+                render = args.render and (episode % args.render_episodes == 0)
 
-            # Test episode loop
-            while not done:
-                # Take action in env
-                if render:
-                    env.render()
+                # Test episode loop
+                while not done:
+                    # Take action in env
+                    if render:
+                        env.render()
 
-                state, reward, done, _, prev_frame = get_state_on_step(
-                    env, args.model_type, action, last_num_frames,
-                    args.num_frames, prev_frame)
-                action = agent.online.act(state, 0)  # passing in epsilon = 0
+                    state, reward, done, _, prev_frame = get_state_on_step(
+                        env, args.model_type, action, last_num_frames,
+                        args.num_frames, prev_frame)
+                    action = agent.online.act(state, 0)  # passing in epsilon = 0
 
-                # Update reward
-                cumulative_reward += reward
+                    # Update reward
+                    cumulative_reward += reward
 
-            env.close()  # close viewer
+                env.close()  # close viewer
 
-            print(
-                f"Episode: {episode}, steps: {global_steps}, policy_reward: {cumulative_reward}"
-            )
+                print(f"Policy_reward for test: {cumulative_reward}")
 
-            # Logging
-            writer.add_scalar('validation/policy_reward', cumulative_reward,
-                              episode)
-            episode += 1
+                # Logging
+                writer.add_scalar('validation/policy_reward', cumulative_reward,
+                                  episode)
+                episode += 1
 
     env.close()
     if args.model_path:

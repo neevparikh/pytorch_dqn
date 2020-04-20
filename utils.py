@@ -58,7 +58,12 @@ def parse_args():
     parser.add_argument('--max-steps',
                         help='Number of steps to run for',
                         type=int,
-                        default=2000,
+                        default=100000,
+                        required=False)
+    parser.add_argument('--test-policy-steps',
+                        help='Policy is tested every these many steps',
+                        type=int,
+                        default=10000,
                         required=False)
     parser.add_argument('--warmup-period',
                         help='Number of steps to act randomly and not train',
