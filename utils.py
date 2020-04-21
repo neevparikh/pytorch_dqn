@@ -3,8 +3,8 @@ from matplotlib.lines import Line2D
 import numpy as np
 import torch
 import argparse
-import torchvision.transforms as T
 from datetime import datetime
+from atari_wrappers import AtariPreprocess, MaxAndSkipEnv, FrameStack
 
 
 def parse_args():
@@ -22,7 +22,7 @@ def parse_args():
                         CartPole",
                         type=str,
                         default='mlp',
-                        choices=["cnn", "cnn_render", "mlp"],
+                        choices=["cnn", "mlp"],
                         required=True)
     parser.add_argument('--model-path',
                         help='The path to the save the pytorch model',
@@ -60,10 +60,10 @@ def parse_args():
                         type=int,
                         default=100000,
                         required=False)
-    parser.add_argument('--test-policy-steps',
-                        help='Policy is tested every these many steps',
+    parser.add_argument('--test-policy-episodes',
+                        help='Policy is tested every these many episodes',
                         type=int,
-                        default=10000,
+                        default=5,
                         required=False)
     parser.add_argument('--warmup-period',
                         help='Number of steps to act randomly and not train',
@@ -148,81 +148,16 @@ def conv2d_size_out(size, kernel_size, stride):
     return ((size[0] - (kernel_size[0] - 1) - 1) // stride + 1,
             (size[1] - (kernel_size[1] - 1) - 1) // stride + 1)
 
-# Define preprocessing routine
-transforms = T.Compose([
-    T.ToPILImage(mode='YCbCr'),
-    T.Lambda(lambda img: img.split()[0]),
-    T.Resize((84, 84)),
-    T.ToTensor()
-])
-
-def preprocess(img_state, prev_img_state):
-    """ Preprocessing as described in the Nature DQN paper (Mnih 2015) """
-    processed_state = np.maximum(img_state, prev_img_state)
-    return transforms(processed_state)
-
 
 def deque_to_tensor(last_num_frames):
     """ Convert deque of n frames to tensor """
     return torch.cat(list(last_num_frames), dim=0)
 
 
-def get_state_on_step(env, model_type, action, last_num_frames, num_frames,
-                      prev_frame):
-    # NOTE: the last_num_frames deque is modified in place here
-    if model_type == 'mlp':
-        return (*env.step(action), None)
-    elif model_type == 'cnn':
-        assert num_frames
-        assert last_num_frames
-        next_frame, reward, done, info = env.step(action)
-    elif model_type == 'cnn_render':
-        assert num_frames
-        assert last_num_frames
-        _, reward, done, info = env.step(action)
-        next_frame = torch.from_numpy(
-            np.ascontiguousarray(
-                env.render(mode='rgb_array').transpose((2, 0, 1))))
-        env.close()
-    else:
-        raise NotImplementedError(model_type)
-    if prev_frame is None:
-        prev_frame = next_frame
-    while True:
-        if len(last_num_frames) == 0:
-            processed_frame = preprocess(next_frame, next_frame)
-        else:
-            processed_frame = preprocess(next_frame, prev_frame)
-        last_num_frames.append(processed_frame)
-        if len(last_num_frames) == num_frames:
-            break
-    return deque_to_tensor(last_num_frames), reward, done, info, next_frame
-
-
-def get_state_on_reset(env, model_type, last_num_frames, num_frames):
-    # NOTE: the last_num_frames deque is modified in place here
-    if model_type == 'mlp':
-        return env.reset(), None
-    elif model_type == 'cnn':
-        assert num_frames
-        last_num_frames.clear()
-        next_frame = env.reset()
-    elif model_type == 'cnn_render':
-        assert num_frames
-        last_num_frames.clear()
-        env.reset()
-        next_frame = torch.from_numpy(
-            np.ascontiguousarray(
-                env.render(mode='rgb_array').transpose((2, 0, 1))))
-        env.close()
-    else:
-        raise NotImplementedError(model_type)
-    while True:
-        processed_frame = preprocess(next_frame, next_frame)
-        last_num_frames.append(processed_frame)
-        if len(last_num_frames) == num_frames:
-            break
-    return deque_to_tensor(last_num_frames), next_frame
+def make_atari(env, num_frames):
+    """ Wrap env in atari processed env """
+    return FrameStack(MaxAndSkipEnv(AtariPreprocess(env), 2),
+                      num_frames)
 
 
 # Thanks to RoshanRane - Pytorch forums
@@ -264,9 +199,10 @@ def plot_grad_flow(named_parameters):
     ], ['max-gradient', 'mean-gradient', 'zero-gradient'])
     return plt.gcf()
 
+
 def append_timestamp(string, fmt_string=None):
     now = datetime.now()
-    if fmt_string: 
+    if fmt_string:
         return string + "_" + now.strftime(fmt_string)
     else:
         return string + "_" + str(now).replace(" ", "_")

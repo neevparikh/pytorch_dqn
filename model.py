@@ -137,11 +137,21 @@ class DQN_CNN_model(DQN_Base_model):
             p.numel() for p in self.parameters() if p.requires_grad)
         print(f"Number of trainable parameters: {trainable_parameters}")
 
-
     def forward(self, state):
         cnn_output = self.body(state)
         q_value = self.head(cnn_output.view(cnn_output.size(0), -1))
         return q_value
+
+    def act(self, state, epsilon):
+        if random.random() < epsilon:
+            return self.action_space.sample()
+        else:
+            with torch.no_grad():
+                state_tensor = torch.Tensor(state).unsqueeze(0).permute(0, 3, 1, 2)
+                action_tensor = self.argmax_over_actions(state_tensor)
+                action = action_tensor.cpu().detach().numpy().flatten()[0]
+                assert self.action_space.contains(action)
+            return action
 
 
 class DQN_agent:
@@ -170,7 +180,7 @@ class DQN_agent:
                                         num_actions)
             self.target = DQN_MLP_model(device, state_space, action_space,
                                         num_actions)
-        elif model_type == "cnn" or model_type == "cnn_render":
+        elif model_type == "cnn":
             assert num_frames
             self.num_frames = num_frames
             self.online = DQN_CNN_model(device,
@@ -204,14 +214,10 @@ class DQN_agent:
 
     def loss_func(self, minibatch, writer=None, writer_step=None):
         # Make tensors
-        if self.model_type == 'mlp':
-            state_tensor = torch.Tensor(minibatch.state).to(self.device)
-            next_state_tensor = torch.Tensor(minibatch.next_state).to(
-                self.device)
-        elif self.model_type == 'cnn' or self.model_type == 'cnn_render':
-            state_tensor = torch.stack(minibatch.state, dim=0).to(self.device)
-            next_state_tensor = torch.stack(minibatch.next_state,
-                                            dim=0).to(self.device)
+        state_tensor = torch.Tensor(minibatch.state).permute(0, 3, 1,
+                                                             2).to(self.device)
+        next_state_tensor = torch.Tensor(minibatch.next_state).permute(
+            0, 3, 1, 2).to(self.device)
         action_tensor = torch.Tensor(minibatch.action).to(self.device)
         reward_tensor = torch.Tensor(minibatch.reward).to(self.device)
         done_tensor = torch.Tensor(minibatch.done).to(self.device)
@@ -219,7 +225,6 @@ class DQN_agent:
         # Get q value predictions
         q_pred_batch = self.online(state_tensor).gather(
             dim=1, index=action_tensor.long().unsqueeze(1)).squeeze(1)
-
         with torch.no_grad():
             if self.double_DQN:
                 selected_actions = self.online.argmax_over_actions(
@@ -260,4 +265,5 @@ class DQN_agent:
                 self.epsilon_decay_end,
                 1 - (global_steps - self.warmup_period) / self.epsilon_decay)
         if writer:
-            writer.add_scalar('training/epsilon', self.online.epsilon, global_steps)
+            writer.add_scalar('training/epsilon', self.online.epsilon,
+                              global_steps)

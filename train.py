@@ -6,7 +6,7 @@ import os
 from collections import deque
 from torch.utils.tensorboard import SummaryWriter
 
-from utils import parse_args, get_state_on_step, get_state_on_reset, append_timestamp
+from utils import parse_args, make_atari, append_timestamp
 from model import DQN_agent, Experience
 
 if __name__ == "__main__":
@@ -28,6 +28,9 @@ if __name__ == "__main__":
     else:
         env = args.env
 
+    if args.model_type == 'cnn':
+        assert args.num_frames
+        env = make_atari(env, args.num_frames)
     if type(env.action_space) != gym.spaces.Discrete:
         raise NotImplementedError("DQN for continuous action_spaces hasn't been\
                 implemented")
@@ -56,12 +59,6 @@ if __name__ == "__main__":
     }
     agent = DQN_agent(**agent_args)
 
-    if args.model_type == 'cnn' or args.model_type == 'cnn_render':
-        assert args.num_frames
-        last_num_frames = deque(maxlen=args.num_frames)
-    else:
-        last_num_frames = None
-
     # Initialize optimizer
     optimizer = torch.optim.Adam(agent.online.parameters(), lr=args.lr)
 
@@ -76,8 +73,7 @@ if __name__ == "__main__":
     episode = 0
     while global_steps < args.max_steps:
         print(f"Episode: {episode}, steps: {global_steps}")
-        state, prev_frame = get_state_on_reset(env, args.model_type,
-                                               last_num_frames, args.num_frames)
+        state = env.reset()
         done = False
         agent.set_epsilon(global_steps, writer)
 
@@ -87,9 +83,7 @@ if __name__ == "__main__":
         while not done:
             global_steps += 1
             action = agent.online.act(state, agent.online.epsilon)
-            next_state, reward, done, _, prev_frame = get_state_on_step(
-                env, args.model_type, action, last_num_frames, args.num_frames,
-                prev_frame)
+            next_state, reward, done, _ = env.step(action)
             if args.reward_clip:
                 clipped_reward = np.clip(reward, -args.reward_clip,
                                          args.reward_clip)
@@ -131,20 +125,18 @@ if __name__ == "__main__":
 
         writer.add_scalar('training/avg_episode_loss', cumulative_loss / step,
                           episode)
+        episode += 1
 
         if len(agent.replay_buffer
               ) < args.batchsize or global_steps < args.warmup_period:
-            episode += 1
             continue
 
         # Testing policy
-        if global_steps % args.test_policy_steps == 0:
+        if episode % args.test_policy_episodes == 0:
             with torch.no_grad():
                 # Reset environment
                 cumulative_reward = 0
-                state, prev_frame = get_state_on_reset(env, args.model_type,
-                                                       last_num_frames,
-                                                       args.num_frames)
+                state = env.reset()
                 action = agent.online.act(state, 0)
                 done = False
                 render = args.render and (episode % args.render_episodes == 0)
@@ -155,9 +147,7 @@ if __name__ == "__main__":
                     if render:
                         env.render()
 
-                    state, reward, done, _, prev_frame = get_state_on_step(
-                        env, args.model_type, action, last_num_frames,
-                        args.num_frames, prev_frame)
+                    state, reward, done, _ = env.step(action)
                     action = agent.online.act(state, 0)  # passing in epsilon = 0
 
                     # Update reward
@@ -170,7 +160,6 @@ if __name__ == "__main__":
                 # Logging
                 writer.add_scalar('validation/policy_reward', cumulative_reward,
                                   episode)
-                episode += 1
 
     env.close()
     if args.model_path:
