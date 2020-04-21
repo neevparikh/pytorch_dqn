@@ -214,10 +214,11 @@ class DQN_agent:
 
     def loss_func(self, minibatch, writer=None, writer_step=None):
         # Make tensors
-        state_tensor = torch.Tensor(minibatch.state).permute(0, 3, 1,
-                                                             2).to(self.device)
-        next_state_tensor = torch.Tensor(minibatch.next_state).permute(
-            0, 3, 1, 2).to(self.device)
+        state_tensor = torch.Tensor(minibatch.state).to(self.device)
+        next_state_tensor = torch.Tensor(minibatch.next_state).to(self.device)
+        if self.model_type == "cnn":
+            state_tensor = state_tensor.permute(0, 3, 1, 2)
+            next_state_tensor = next_state_tensor.permute(0, 3, 1, 2)
         action_tensor = torch.Tensor(minibatch.action).to(self.device)
         reward_tensor = torch.Tensor(minibatch.reward).to(self.device)
         done_tensor = torch.Tensor(minibatch.done).to(self.device)
