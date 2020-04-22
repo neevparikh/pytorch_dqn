@@ -2,6 +2,8 @@
 python train.py \
 --env "PongNoFrameskip-v4" \
 --model-type cnn \
+# --env "CartPole-v1" \
+# --model-type mlp \
 --gpu \
 --seed 5 \
 --lr 0.00025 \
