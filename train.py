@@ -78,12 +78,13 @@ if __name__ == "__main__":
         agent.set_epsilon(global_steps, writer)
 
         cumulative_loss = 0
-        step = 1
+        steps = 1
         # Collect data from the environment
         while not done:
             global_steps += 1
             action = agent.online.act(state, agent.online.epsilon)
             next_state, reward, done, _ = env.step(action)
+            steps += 1
             if args.reward_clip:
                 clipped_reward = np.clip(reward, -args.reward_clip,
                                          args.reward_clip)
@@ -121,12 +122,10 @@ if __name__ == "__main__":
 
             # Average over update steps
             cumulative_loss /= args.update_steps
-            step += 1
 
-        writer.add_scalar('training/avg_episode_loss', cumulative_loss / step,
+        writer.add_scalar('training/avg_episode_loss', cumulative_loss / steps,
                           episode)
         episode += 1
-
         if len(agent.replay_buffer
               ) < args.batchsize or global_steps < args.warmup_period:
             continue
@@ -148,7 +147,8 @@ if __name__ == "__main__":
                         env.render()
 
                     state, reward, done, _ = env.step(action)
-                    action = agent.online.act(state, 0)  # passing in epsilon = 0
+                    action = agent.online.act(state,
+                                              0)  # passing in epsilon = 0
 
                     # Update reward
                     cumulative_reward += reward

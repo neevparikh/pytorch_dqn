@@ -16,12 +16,12 @@ class AtariPreprocess(gym.Wrapper):
             T.ToPILImage(mode='YCbCr'),
             T.Lambda(lambda img: img.split()[0]),
             T.Resize(self.shape),
-            T.Lambda(lambda img: np.expand_dims(np.array(img), axis=-1)),
+            T.Lambda(lambda img: np.array(img)),
         ])
         self.observation_space = gym.spaces.Box(
             low=0,
             high=255,
-            shape=self.shape + (1,),
+            shape=self.shape,
             dtype=np.uint8,
         )
 
@@ -79,7 +79,7 @@ class FrameStack(gym.Wrapper):
         self.observation_space = gym.spaces.Box(
             low=0,
             high=255,
-            shape=(shp[:-1] + (shp[-1] * k,)),
+            shape=((shp[-1] * k,) + shp[:-1]),
             dtype=env.observation_space.dtype)
 
     def reset(self):
@@ -106,13 +106,9 @@ class LazyFrames(object):
         be huge for DQN's 1M frames replay buffers.  This object should only be
         converted to numpy array before being passed to the model."""
         self._frames = frames
-        self._out = None
 
     def _force(self):
-        if self._out is None:
-            self._out = np.concatenate(self._frames, axis=-1)
-            self._frames = None
-        return self._out
+        return np.concatenate(self._frames, axis=0)
 
     def __array__(self, dtype=None):
         out = self._force()
@@ -121,14 +117,7 @@ class LazyFrames(object):
         return out
 
     def __len__(self):
-        return len(self._force())
+        return len(self._frames)
 
     def __getitem__(self, i):
-        return self._force()[i]
-
-    def count(self):
-        frames = self._force()
-        return frames.shape[frames.ndim - 1]
-
-    def frame(self, i):
-        return self._force()[..., i]
+        return self._frames[i]
