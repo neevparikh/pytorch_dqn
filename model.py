@@ -139,7 +139,7 @@ class DQN_CNN_model(DQN_Base_model):
 
     def forward(self, state):
         cnn_output = self.body(state)
-        q_value = self.head(cnn_output.view(cnn_output.size(0), -1))
+        q_value = self.head(cnn_output.reshape(cnn_output.size(0), -1))
         return q_value
 
     def act(self, state, epsilon):
@@ -147,7 +147,7 @@ class DQN_CNN_model(DQN_Base_model):
             return self.action_space.sample()
         else:
             with torch.no_grad():
-                state_tensor = torch.Tensor(state).unsqueeze(0).permute(0, 3, 1, 2)
+                state_tensor = torch.Tensor(state).unsqueeze(0)
                 action_tensor = self.argmax_over_actions(state_tensor)
                 action = action_tensor.cpu().detach().numpy().flatten()[0]
                 assert self.action_space.contains(action)
@@ -214,11 +214,8 @@ class DQN_agent:
 
     def loss_func(self, minibatch, writer=None, writer_step=None):
         # Make tensors
-        state_tensor = torch.Tensor(minibatch.state).to(self.device)
-        next_state_tensor = torch.Tensor(minibatch.next_state).to(self.device)
-        if self.model_type == "cnn":
-            state_tensor = state_tensor.permute(0, 3, 1, 2)
-            next_state_tensor = next_state_tensor.permute(0, 3, 1, 2)
+        state_tensor = torch.Tensor(np.array(minibatch.state)).to(self.device)
+        next_state_tensor = torch.Tensor(np.array(minibatch.next_state)).to(self.device) 
         action_tensor = torch.Tensor(minibatch.action).to(self.device)
         reward_tensor = torch.Tensor(minibatch.reward).to(self.device)
         done_tensor = torch.Tensor(minibatch.done).to(self.device)
