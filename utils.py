@@ -17,9 +17,7 @@ def parse_args():
                         type=str,
                         required=True)
     parser.add_argument('--model-type',
-                        help="Type of architecture, cnn_render uses render to \
-                        get image for envs that don't have pixel states like \
-                        CartPole",
+                        help="Type of architecture",
                         type=str,
                         default='mlp',
                         choices=["cnn", "mlp"],
@@ -35,6 +33,10 @@ def parse_args():
                         required=False)
     parser.add_argument('--output-path',
                         help='The output directory to store training stats',
+                        type=str,
+                        required=False)
+    parser.add_argument('--load-checkpoint-path',
+                        help='Use the gpu or not',
                         type=str,
                         required=False)
     parser.add_argument('--gpu',
@@ -59,6 +61,11 @@ def parse_args():
                         help='Number of steps to run for',
                         type=int,
                         default=100000,
+                        required=False)
+    parser.add_argument('--checkpoint-steps',
+                        help='Checkpoint every so often',
+                        type=int,
+                        default=10000,
                         required=False)
     parser.add_argument('--test-policy-episodes',
                         help='Policy is tested every these many episodes',
@@ -156,7 +163,7 @@ def deque_to_tensor(last_num_frames):
 
 def make_atari(env, num_frames):
     """ Wrap env in atari processed env """
-    return FrameStack(MaxAndSkipEnv(AtariPreprocess(env), 2),
+    return FrameStack(MaxAndSkipEnv(AtariPreprocess(env), 4),
                       num_frames)
 
 
