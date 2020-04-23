@@ -2,7 +2,7 @@ import gym
 from collections import deque
 import numpy as np
 import torchvision.transforms as T
-
+from sys import getsizeof as gso
 
 # Adapted from OpenAI Baselines:
 # https://github.com/openai/baselines/blob/master/baselines/common/atari_wrappers.py
@@ -16,7 +16,7 @@ class AtariPreprocess(gym.Wrapper):
             T.ToPILImage(mode='YCbCr'),
             T.Lambda(lambda img: img.split()[0]),
             T.Resize(self.shape),
-            T.Lambda(lambda img: np.array(img)),
+            T.Lambda(lambda img: np.array(img, copy=False)),
         ])
         self.observation_space = gym.spaces.Box(
             low=0,
@@ -107,11 +107,8 @@ class LazyFrames(object):
         converted to numpy array before being passed to the model."""
         self._frames = frames
 
-    def _force(self):
-        return np.concatenate(self._frames, axis=0)
-
     def __array__(self, dtype=None):
-        out = self._force()
+        out = np.concatenate(self._frames, axis=0)        
         if dtype is not None:
             out = out.astype(dtype)
         return out

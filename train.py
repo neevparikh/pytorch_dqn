@@ -8,8 +8,9 @@ from torch.utils.tensorboard import SummaryWriter
 
 from utils import parse_args, make_atari, append_timestamp
 from model import DQN_agent, Experience
-
-if __name__ == "__main__":
+from memory_profiler import profile
+@profile
+def main():
     args = parse_args()
 
     # Setting cuda seeds
@@ -61,6 +62,18 @@ if __name__ == "__main__":
 
     # Initialize optimizer
     optimizer = torch.optim.Adam(agent.online.parameters(), lr=args.lr)
+
+    # Load checkpoint
+    if args.load_checkpoint_path:
+        checkpoint = torch.load(args.load_checkpoint_path)
+        agent.online.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        agent.online.train()
+
+    # Save path
+    if args.model_path:
+        if not os.path.isdir(args.model_path):
+            os.makedirs(args.model_path)
 
     # Logging for tensorboard
     if args.output_path:
@@ -160,10 +173,25 @@ if __name__ == "__main__":
                 # Logging
                 writer.add_scalar('validation/policy_reward', cumulative_reward,
                                   episode)
+        if args.model_path:
+            if global_steps % args.checkpoint_steps == 0:
+                for filename in os.listdir(f"{args.model_path}/"):
+                    if "checkpoint" in filename:
+                        os.remove(f"{args.model_path}/" + filename)
+                torch.save(
+                    {
+                        "global_steps": global_steps,
+                        "model_state_dict": agent.online.state_dict(),
+                        "optimizer_state_dict": optimizer.state_dict(),
+                        "loss": loss
+                    },
+                    append_timestamp(f"{args.model_path}/checkpoint_{args.env}")
+                    + "_{global_steps}.tar")
 
     env.close()
     if args.model_path:
-        if not os.path.isdir(args.model_path):
-            os.makedirs(args.model_path)
         torch.save(agent.online,
                    append_timestamp(f"{args.model_path}/{args.env}") + ".pth")
+
+if __name__ == "__main__":
+    main()
