@@ -36,7 +36,7 @@ def parse_args():
                         type=str,
                         required=False)
     parser.add_argument('--load-checkpoint-path',
-                        help='Use the gpu or not',
+                        help='Path to checkpoint',
                         type=str,
                         required=False)
     parser.add_argument('--gpu',

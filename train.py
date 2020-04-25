@@ -8,9 +8,8 @@ from torch.utils.tensorboard import SummaryWriter
 
 from utils import parse_args, make_atari, append_timestamp
 from model import DQN_agent, Experience
-from memory_profiler import profile
-@profile
-def main():
+
+if __name__ == "__main__":
     args = parse_args()
 
     # Setting cuda seeds
@@ -135,6 +134,21 @@ def main():
 
             # Average over update steps
             cumulative_loss /= args.update_steps
+            
+            if args.model_path:
+                if global_steps % args.checkpoint_steps == 0:
+                    for filename in os.listdir(f"{args.model_path}/"):
+                        if "checkpoint" in filename:
+                            os.remove(f"{args.model_path}/" + filename)
+                    torch.save(
+                        {
+                            "global_steps": global_steps,
+                            "model_state_dict": agent.online.state_dict(),
+                            "optimizer_state_dict": optimizer.state_dict(),
+                            "loss": loss
+                        },
+                        append_timestamp(f"{args.model_path}/checkpoint_{args.env}")
+                        + f"_{global_steps}.tar")
 
         writer.add_scalar('training/avg_episode_loss', cumulative_loss / steps,
                           episode)
@@ -173,25 +187,9 @@ def main():
                 # Logging
                 writer.add_scalar('validation/policy_reward', cumulative_reward,
                                   episode)
-        if args.model_path:
-            if global_steps % args.checkpoint_steps == 0:
-                for filename in os.listdir(f"{args.model_path}/"):
-                    if "checkpoint" in filename:
-                        os.remove(f"{args.model_path}/" + filename)
-                torch.save(
-                    {
-                        "global_steps": global_steps,
-                        "model_state_dict": agent.online.state_dict(),
-                        "optimizer_state_dict": optimizer.state_dict(),
-                        "loss": loss
-                    },
-                    append_timestamp(f"{args.model_path}/checkpoint_{args.env}")
-                    + "_{global_steps}.tar")
 
     env.close()
     if args.model_path:
         torch.save(agent.online,
                    append_timestamp(f"{args.model_path}/{args.env}") + ".pth")
 
-if __name__ == "__main__":
-    main()
