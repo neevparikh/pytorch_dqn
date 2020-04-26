@@ -214,11 +214,14 @@ class DQN_agent:
 
     def loss_func(self, minibatch, writer=None, writer_step=None):
         # Make tensors
-        state_tensor = torch.Tensor(np.array(minibatch.state)).to(self.device)
-        next_state_tensor = torch.Tensor(np.array(minibatch.next_state)).to(self.device) 
-        action_tensor = torch.Tensor(minibatch.action).to(self.device)
-        reward_tensor = torch.Tensor(minibatch.reward).to(self.device)
-        done_tensor = torch.Tensor(minibatch.done).to(self.device)
+        state_tensor = torch.from_numpy(np.array(
+            minibatch.state, copy=True)).to(self.device, dtype=torch.float32)
+        next_state_tensor = torch.from_numpy(
+            np.array(minibatch.next_state, copy=True)).to(self.device,
+                                                          dtype=torch.float32)
+        action_tensor = torch.FloatTensor(minibatch.action).to(self.device, dtype=torch.float32)
+        reward_tensor = torch.FloatTensor(minibatch.reward).to(self.device, dtype=torch.float32)
+        done_tensor = torch.ByteTensor(minibatch.done).to(self.device, dtype=torch.uint8)
 
         # Get q value predictions
         q_pred_batch = self.online(state_tensor).gather(
