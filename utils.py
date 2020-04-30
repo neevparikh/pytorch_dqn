@@ -16,6 +16,10 @@ def parse_args():
                         help='The gym environment to train on',
                         type=str,
                         required=True)
+    parser.add_argument('--ari',
+                        help='Whether to use annotated RAM',
+                        action='store_true',
+                        required=False)
     parser.add_argument('--model-type',
                         help="Type of architecture",
                         type=str,

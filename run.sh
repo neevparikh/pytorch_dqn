@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 python train.py \
 --env "PongNoFrameskip-v4" \
---model-type cnn \
+--ari \
+--model-type mlp \
 --gpu \
 --seed 5 \
 --lr 0.00025 \
