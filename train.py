@@ -45,6 +45,14 @@ if __name__ == "__main__":
     else:
         device = torch.device('cpu')
 
+    if args.ari:
+        # change the observation space to accurately represent 
+        # the shape of the labeled RAM observations
+        env.observation_space = gym.spaces.box.Box(0, 
+                                                  10000, # arbitrary max value
+                                                  shape=(len(env.labels()),), 
+                                                  dtype=np.int8)
+
     # Initialize model
     agent_args = {
         "device": device,
