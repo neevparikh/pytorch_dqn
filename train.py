@@ -5,7 +5,8 @@ import torch
 import os
 from collections import deque
 from torch.utils.tensorboard import SummaryWriter
-
+from guppy import hpy
+h = hpy()
 from utils import parse_args, make_atari, append_timestamp
 from model import DQN_agent, Experience
 
@@ -83,6 +84,7 @@ if __name__ == "__main__":
     # Episode loop
     global_steps = 0
     episode = 0
+    __import__('pdb').set_trace()
     while global_steps < args.max_steps:
         print(f"Episode: {episode}, steps: {global_steps}")
         state = env.reset()
@@ -156,7 +158,6 @@ if __name__ == "__main__":
         if len(agent.replay_buffer
               ) < args.batchsize or global_steps < args.warmup_period:
             continue
-
         # Testing policy
         if episode % args.test_policy_episodes == 0:
             with torch.no_grad():
