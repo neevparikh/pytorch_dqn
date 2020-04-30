@@ -1,4 +1,5 @@
 import gym
+from atariari.benchmark.wrapper import AtariARIWrapper
 import numpy as np
 import random
 import torch
@@ -24,7 +25,10 @@ if __name__ == "__main__":
 
     # Initialize environment
     if type(args.env) == str:
-        env = gym.make(args.env)
+        if args.ari:
+            env = AtariARIWrapper(gym.make(args.env))
+        else:
+            env = gym.make(args.env)
     else:
         env = args.env
 
@@ -85,7 +89,14 @@ if __name__ == "__main__":
     episode = 0
     while global_steps < args.max_steps:
         print(f"Episode: {episode}, steps: {global_steps}")
-        state = env.reset()
+
+        if args.ari:
+            # reset the env and get the current labeled RAM
+            env.reset()
+            state = np.array(list(env.labels().values()))
+        else:
+            state = env.reset()
+        
         done = False
         agent.set_epsilon(global_steps, writer)
 
@@ -95,7 +106,15 @@ if __name__ == "__main__":
         while not done:
             global_steps += 1
             action = agent.online.act(state, agent.online.epsilon)
-            next_state, reward, done, _ = env.step(action)
+
+            if args.ari:
+                # we don't need the obs here, just the labels in info
+                _, reward, done, info = env.step(action)
+                # grab the labeled RAM out of info and put as next_state
+                next_state = np.array(list(info['labels'].values()))
+            else:
+                next_state, reward, done, info = env.step(action)
+
             steps += 1
             if args.reward_clip:
                 clipped_reward = np.clip(reward, -args.reward_clip,
@@ -162,7 +181,13 @@ if __name__ == "__main__":
             with torch.no_grad():
                 # Reset environment
                 cumulative_reward = 0
-                state = env.reset()
+
+                if args.ari:
+                    env.reset()
+                    state = np.array(list(env.labels().values()))
+                else:
+                    state = env.reset()
+
                 action = agent.online.act(state, 0)
                 done = False
                 render = args.render and (episode % args.render_episodes == 0)
@@ -173,7 +198,12 @@ if __name__ == "__main__":
                     if render:
                         env.render()
 
-                    state, reward, done, _ = env.step(action)
+                    if args.ari:
+                        _, reward, done, info = env.step(action)
+                        state = np.array(list(info['labels'].values()))
+                    else:
+                        state, reward, done, _ = env.step(action)
+                        
                     action = agent.online.act(state,
                                               0)  # passing in epsilon = 0
 
