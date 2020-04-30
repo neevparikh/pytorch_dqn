@@ -49,9 +49,9 @@ if __name__ == "__main__":
         # change the observation space to accurately represent 
         # the shape of the labeled RAM observations
         env.observation_space = gym.spaces.box.Box(0, 
-                                                  10000, # arbitrary max value
+                                                  255, # arbitrary max value
                                                   shape=(len(env.labels()),), 
-                                                  dtype=np.int8)
+                                                  dtype=np.uint8)
 
     # Initialize model
     agent_args = {
