@@ -4,7 +4,6 @@ import numpy as np
 import random
 import torch
 import os
-from collections import deque
 from torch.utils.tensorboard import SummaryWriter
 
 from utils import parse_args, make_atari, append_timestamp
@@ -72,7 +71,8 @@ if __name__ == "__main__":
     agent = DQN_agent(**agent_args)
 
     # Initialize optimizer
-    optimizer = torch.optim.Adam(agent.online.parameters(), lr=args.lr)
+    # optimizer = torch.optim.Adam(agent.online.parameters(), lr=args.lr)
+    optimizer = torch.optim.Adam(agent.online.parameters())
 
     # Load checkpoint
     if args.load_checkpoint_path:
