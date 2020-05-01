@@ -39,6 +39,10 @@ def parse_args():
                         help='Use the gpu or not',
                         type=str,
                         required=False)
+    parser.add_argument('--no-atari',
+                        help='Use atari preprocessing',
+                        action='store_false',
+                        required=False)
     parser.add_argument('--gpu',
                         help='Use the gpu or not',
                         action='store_true',

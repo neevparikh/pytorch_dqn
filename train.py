@@ -3,13 +3,11 @@ import numpy as np
 import random
 import torch
 import os
-from collections import deque
 from torch.utils.tensorboard import SummaryWriter
 
 from utils import parse_args, make_atari, append_timestamp
 from model import DQN_agent, Experience
-from memory_profiler import profile
-@profile
+
 def main():
     args = parse_args()
 
@@ -31,7 +29,8 @@ def main():
 
     if args.model_type == 'cnn':
         assert args.num_frames
-        env = make_atari(env, args.num_frames)
+        if not args.no_atari:
+            env = make_atari(env, args.num_frames)
     if type(env.action_space) != gym.spaces.Discrete:
         raise NotImplementedError("DQN for continuous action_spaces hasn't been\
                 implemented")
