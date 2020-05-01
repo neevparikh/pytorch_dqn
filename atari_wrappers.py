@@ -3,6 +3,10 @@ from collections import deque
 import numpy as np
 import torchvision.transforms as T
 
+import pdb
+
+breakpoints = False
+
 # Adapted from OpenAI Baselines:
 # https://github.com/openai/baselines/blob/master/baselines/common/atari_wrappers.py
 class AtariPreprocess(gym.Wrapper):
@@ -29,6 +33,7 @@ class AtariPreprocess(gym.Wrapper):
 
     def step(self, action):
         next_state, reward, done, info = self.env.step(action)
+        if breakpoints: pdb.set_trace()
         return self.transforms(next_state), reward, done, info
 
 class MaxAndSkipEnv(gym.Wrapper):
@@ -50,10 +55,11 @@ class MaxAndSkipEnv(gym.Wrapper):
         done = None
         for i in range(self._skip):
             obs, reward, done, info = self.env.step(action)
+            if breakpoints: pdb.set_trace()
             if i == self._skip - 2:
-                self._obs_buffer[0] = obs
+                self._obs_buffer[0] = obs#.copy()
             if i == self._skip - 1:
-                self._obs_buffer[1] = obs
+                self._obs_buffer[1] = obs#.copy()
             total_reward += reward
             if done:
                 break
@@ -88,6 +94,7 @@ class FrameStack(gym.Wrapper):
         return self._get_ob()
 
     def step(self, action):
+        if breakpoints: pdb.set_trace()
         ob, reward, done, info = self.env.step(action)
         self.frames.append(ob)
         return self._get_ob(), reward, done, info
@@ -107,7 +114,7 @@ class LazyFrames(object):
         self._frames = frames
 
     def __array__(self, dtype=None):
-        out = np.concatenate(self._frames, axis=0)        
+        out = np.concatenate(self._frames, axis=0)
         if dtype is not None:
             out = out.astype(dtype)
         return out
