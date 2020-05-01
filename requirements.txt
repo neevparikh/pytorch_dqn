@@ -50,7 +50,7 @@ smmap==3.0.2
 subprocess32==3.5.4
 tensorboard==2.2.0
 tensorboard-plugin-wit==1.6.0.post3
-torch==1.5.0
+torch==1.4.0
 torchvision==0.5.0
 urllib3==1.25.8
 wandb==0.8.34
