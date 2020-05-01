@@ -91,7 +91,8 @@ if args.model_path:
 if args.output_path:
     writer = SummaryWriter(args.output_path)
 else:
-    writer = SummaryWriter(comment=args.env)
+    ari_suffix = '_ari' if args.ari else ''
+    writer = SummaryWriter(comment=args.env + ari_suffix)
 
 # Episode loop
 global_steps = 0
