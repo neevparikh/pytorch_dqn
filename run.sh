@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 python train.py \
---env "PongNoFrameskip-v4" \
+--env "Pong-ramNoFrameskip-v4" \
 --ari \
 --model-type mlp \
 --gpu \
