@@ -114,7 +114,7 @@ class SequentialMemory(object):
 
     def append(self, observation, action, reward, terminal):
         # This needs to be understood as follows: in `observation`, take `action`, obtain `reward`
-        # and weather the next state is `terminal` or not.
+        # and whether the next state is `terminal` or not.
         self.observations.append(observation)
         self.actions.append(action)
         self.rewards.append(reward)
