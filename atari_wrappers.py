@@ -79,7 +79,7 @@ class FrameStack(gym.Wrapper):
         self.observation_space = gym.spaces.Box(
             low=0,
             high=255,
-            shape=((shp[-1] * k,) + shp[:-1]),
+            shape=((k,) + shp),
             dtype=env.observation_space.dtype)
 
     def reset(self):
@@ -107,11 +107,14 @@ class LazyFrames(object):
         converted to numpy array before being passed to the model."""
         self._frames = frames
 
-    def __array__(self, dtype=None):
-        out = np.concatenate(self._frames, axis=0)        
-        if dtype is not None:
-            out = out.astype(dtype)
-        return out
+    # def __array__(self, dtype=None):
+    #     out = np.concatenate(self._frames, axis=0)        
+    #     if dtype is not None:
+    #         out = out.astype(dtype)
+    #     return out
+    
+    def place(self, out):
+        np.stack(self._frames, axis=0, out=out) 
 
     def __len__(self):
         return len(self._frames)

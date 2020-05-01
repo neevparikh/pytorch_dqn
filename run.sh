@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 python train.py \
---env "PongNoFrameskip-v4" \
+--env "Pong-ramNoFrameskip-v4" \
 --ari \
 --model-type mlp \
 --gpu \
 --seed 5 \
---lr 0.00025 \
+--lr 0.001 \
 --batchsize 32 \
---replay-buffer-size 1000000 \
---warmup-period 1000000  \
+--replay-buffer-size 100000 \
+--warmup-period 10000  \
 --max-steps 2000000 \
 --test-policy-episodes 10 \
 --reward-clip 1 \

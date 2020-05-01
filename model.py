@@ -3,7 +3,7 @@ import numpy as np
 import random
 from collections import deque, namedtuple
 
-from utils import sync_networks, conv2d_size_out
+from utils import sync_networks, conv2d_size_out, fill_numpy
 
 Experience = namedtuple('Experience',
                         ['state', 'action', 'reward', 'next_state', 'done'])
@@ -211,17 +211,29 @@ class DQN_agent:
 
         self.model_type = model_type
         self.double_DQN = double_DQN
+        self.state_space = state_space
 
     def loss_func(self, minibatch, writer=None, writer_step=None):
         # Make tensors
-        state_tensor = torch.from_numpy(np.array(
-            minibatch.state, copy=True)).to(self.device, dtype=torch.float32)
-        next_state_tensor = torch.from_numpy(
-            np.array(minibatch.next_state, copy=True)).to(self.device,
-                                                          dtype=torch.float32)
-        action_tensor = torch.FloatTensor(minibatch.action).to(self.device, dtype=torch.float32)
-        reward_tensor = torch.FloatTensor(minibatch.reward).to(self.device, dtype=torch.float32)
-        done_tensor = torch.ByteTensor(minibatch.done).to(self.device, dtype=torch.uint8)
+        state_numpy = np.zeros((len(minibatch.state),) +
+                               self.state_space.shape).astype(np.float32)
+        fill_numpy(minibatch.state, state_numpy)
+        next_state_numpy = np.zeros((len(minibatch.next_state),) +
+                                    self.state_space.shape).astype(np.float32)
+        fill_numpy(minibatch.next_state, next_state_numpy)
+        state_tensor = torch.from_numpy(state_numpy).to(self.device,
+                                                        dtype=torch.float32)
+        next_state_tensor = torch.from_numpy(next_state_numpy).to(
+            self.device, dtype=torch.float32)
+
+        action_tensor = torch.FloatTensor(minibatch.action).to(
+            self.device, dtype=torch.float32)
+        reward_tensor = torch.FloatTensor(minibatch.reward).to(
+            self.device, dtype=torch.float32)
+        done_tensor = torch.ByteTensor(minibatch.done).to(self.device,
+                                                          dtype=torch.uint8)
+        del state_numpy 
+        del next_state_numpy
 
         # Get q value predictions
         q_pred_batch = self.online(state_tensor).gather(

@@ -5,7 +5,11 @@ import torch
 import argparse
 from datetime import datetime
 from atari_wrappers import AtariPreprocess, MaxAndSkipEnv, FrameStack
+from memory_profiler import profile
 
+def fill_numpy(lztup, out):
+    for i, lz in enumerate(lztup):
+        lz.place(out[i])
 
 def parse_args():
     # Parse input arguments

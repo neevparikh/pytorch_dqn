@@ -1,12 +1,13 @@
 import gym
 from atariari.benchmark.wrapper import AtariARIWrapper
+import time
 import numpy as np
 import random
 import torch
 import os
 from torch.utils.tensorboard import SummaryWriter
-from guppy import hpy
-h = hpy()
+# from guppy import hpy
+# h = hpy()
 from utils import parse_args, make_atari, append_timestamp
 from model import DQN_agent, Experience
 
@@ -95,10 +96,13 @@ if __name__ == "__main__":
 
     # Episode loop
     global_steps = 0
+    steps = 1
     episode = 0
-    __import__('pdb').set_trace()
+    start = time.time() 
+    end = time.time() + 1
+    # __import__('pdb').set_trace()
     while global_steps < args.max_steps:
-        print(f"Episode: {episode}, steps: {global_steps}")
+        print(f"Episode: {episode}, steps: {global_steps}, FPS: {steps/(end - start)}")
 
         if args.ari:
             # reset the env and get the current labeled RAM
