@@ -2,6 +2,7 @@ import gym
 from atariari.benchmark.wrapper import AtariARIWrapper
 import numpy as np
 import random
+import time
 import torch
 import os
 from torch.utils.tensorboard import SummaryWriter
@@ -71,8 +72,7 @@ if __name__ == "__main__":
     agent = DQN_agent(**agent_args)
 
     # Initialize optimizer
-    # optimizer = torch.optim.Adam(agent.online.parameters(), lr=args.lr)
-    optimizer = torch.optim.Adam(agent.online.parameters())
+    optimizer = torch.optim.Adam(agent.online.parameters(), lr=args.lr)
 
     # Load checkpoint
     if args.load_checkpoint_path:
@@ -94,10 +94,13 @@ if __name__ == "__main__":
 
     # Episode loop
     global_steps = 0
+    steps = 1
     episode = 0
+    start = time.time()
+    end = time.time() + 1
     while global_steps < args.max_steps:
-        print(f"Episode: {episode}, steps: {global_steps}")
-
+        print(f"Episode: {episode}, steps: {global_steps}, FPS: {steps/(end - start)}")
+        start = time.time()
         if args.ari:
             # reset the env and get the current labeled RAM
             env.reset()
@@ -179,6 +182,7 @@ if __name__ == "__main__":
 
         writer.add_scalar('training/avg_episode_loss', cumulative_loss / steps,
                           episode)
+        end = time.time()
         episode += 1
         if len(agent.replay_buffer
               ) < args.batchsize or global_steps < args.warmup_period:
