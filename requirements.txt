@@ -1,7 +1,5 @@
-a2c-ppo-acktr==0.0.1
 absl-py==0.9.0
 atari-py==0.2.6
-atariari==0.0.1
 cachetools==4.1.0
 certifi==2020.4.5.1
 chardet==3.0.4
@@ -58,3 +56,5 @@ urllib3==1.25.8
 wandb==0.8.34
 watchdog==0.10.2
 Werkzeug==1.0.1
+git+git://github.com/ankeshanand/pytorch-a2c-ppo-acktr-gail
+git+git://github.com/mila-iqia/atari-representation-learning.git
