@@ -1,6 +1,6 @@
 from collections import deque
 # from pympler.asizeof import asizeof as aso
-from atari_wrappers import LazyFrames
+from atari_wrappers import LazyFrames, AtariPreprocess, MaxAndSkipEnv, FrameStack
 import numpy as np
 import random
 from utils import make_atari
@@ -8,13 +8,19 @@ from model import Experience
 import gym
 import torch
 
-size = 500000
+size = 5000
+n_steps = 10000
 rb = deque(maxlen=size)
-env = make_atari(gym.make("PongNoFrameskip-v4"),4)
+#env = make_atari(gym.make("PongNoFrameskip-v4"),4)
+env = gym.make("PongNoFrameskip-v4")
+env = AtariPreprocess(env)
+env = MaxAndSkipEnv(env, 4)
+# env = FrameStack(env, 4)
+# env = FrameStack(MaxAndSkipEnv(AtariPreprocess(env), 4), 4)
 
 def test_func():
     state = env.reset()
-    for i in range(size):
+    for i in range(n_steps):
         print(i)
         action = env.action_space.sample()
         next_state, reward, done, _ = env.step(action)
@@ -28,3 +34,4 @@ def test_func():
             b = torch.FloatTensor(np.array(minibatch.next_state))
 
 test_func()
+

@@ -2,7 +2,7 @@
 
 python train.py \
 --env "BreakoutNoFrameskip-v4" \
---model-type mlp \
+--model-type cnn \
 --gpu \
 --seed 5 \
 --lr 0.00025 \
@@ -14,3 +14,4 @@ python train.py \
 --reward-clip 1 \
 --epsilon-decay 20000 \
 --model-path ./saved_models
+
