@@ -3,23 +3,24 @@ from collections import deque
 import numpy as np
 import random
 from utils import make_atari
-# from model import Experience
+from model import Experience
 import gym
 import torch
 
 from atari_wrappers import LazyFrames, AtariPreprocess, MaxAndSkipEnv, FrameStack
-from memory import SequentialMemory, Experience
+from memory import ReplayBuffer
 
 size = 5000
 n_steps = 10000
-# rb = deque(maxlen=size)
-rb = SequentialMemory(limit=size)
+rb = deque(maxlen=size)
+# rb = SequentialMemory(ob_shape=(84,84), limit=size)
+rb = ReplayBuffer(size)
 
 #env = make_atari(gym.make("PongNoFrameskip-v4"),4)
 env = gym.make("PongNoFrameskip-v4")
 env = AtariPreprocess(env)
 env = MaxAndSkipEnv(env, 4)
-# env = FrameStack(env, 4)
+env = FrameStack(env, 4)
 # env = FrameStack(MaxAndSkipEnv(AtariPreprocess(env), 4), 4)
 
 def test_func():
@@ -28,13 +29,13 @@ def test_func():
         print(i)
         action = env.action_space.sample()
         next_state, reward, done, _ = env.step(action)
-        rb.append(state, action, reward, int(done))
+        rb.add(state, action, reward, next_state, done)
         state = next_state
 
         if i > 32:
-            minibatch = rb.sample(32)
-            minibatch = Experience(*zip(*minibatch))
-            a = torch.FloatTensor(np.array(minibatch.state0))
-            b = torch.FloatTensor(np.array(minibatch.state1))
+            minibatch = Experience(*rb.sample(32))
+            # minibatch = Experience(*zip(*minibatch))
+            a = torch.FloatTensor(np.array(minibatch.state).astype(np.float32))
+            b = torch.FloatTensor(np.array(minibatch.next_state).astype(np.float32))
 
 test_func()
