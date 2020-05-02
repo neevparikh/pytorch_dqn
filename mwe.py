@@ -35,7 +35,7 @@ def test_func():
         if i > 32:
             # minibatch = Experience(*zip(*random.sample(rb,32)))
             minibatch = Experience(*rb.sample(32))
-            a = torch.FloatTensor(np.array(minibatch.state))
-            b = torch.FloatTensor(np.array(minibatch.next_state))
+            a = torch.FloatTensor(np.array(minibatch.state).astype(np.float32))
+            b = torch.FloatTensor(np.array(minibatch.next_state).astype(np.float32))
 
 test_func()
