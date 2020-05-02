@@ -11,10 +11,10 @@ import torch
 size = 5000
 n_steps = 10000
 rb = deque(maxlen=size)
-#env = make_atari(gym.make("PongNoFrameskip-v4"),4)
-env = gym.make("PongNoFrameskip-v4")
-env = AtariPreprocess(env)
-env = MaxAndSkipEnv(env, 4)
+env = make_atari(gym.make("PongNoFrameskip-v4"),4)
+# env = gym.make("PongNoFrameskip-v4")
+# env = AtariPreprocess(env)
+# env = MaxAndSkipEnv(env, 4)
 # env = FrameStack(env, 4)
 # env = FrameStack(MaxAndSkipEnv(AtariPreprocess(env), 4), 4)
 
