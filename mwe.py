@@ -27,8 +27,8 @@ def test_func():
         rb.append(Experience(state, action, reward, next_state, int(done)))
         state = next_state
 
-        if i > 20:
-            minibatch = random.sample(rb, 5)
+        if i > 32:
+            minibatch = random.sample(rb, 32)
             minibatch = Experience(*zip(*minibatch))
             a = torch.FloatTensor(np.array(minibatch.state))
             b = torch.FloatTensor(np.array(minibatch.next_state))
