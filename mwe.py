@@ -1,4 +1,4 @@
-# from collections import deque
+from collections import deque
 # from pympler.asizeof import asizeof as aso
 import numpy as np
 import random
@@ -13,7 +13,6 @@ from memory import ReplayBuffer
 size = 5000
 n_steps = 10000
 # rb = deque(maxlen=size)
-# rb = SequentialMemory(ob_shape=(84,84), limit=size)
 rb = ReplayBuffer(size)
 
 env = make_atari(gym.make("PongNoFrameskip-v4"),4)
@@ -29,13 +28,14 @@ def test_func():
         print(i)
         action = env.action_space.sample()
         next_state, reward, done, _ = env.step(action)
-        rb.add(state, action, reward, next_state, done)
+        # rb.append(Experience(state, action, reward, next_state, done))
+        rb.append(state, action, reward, next_state, done)
         state = next_state
 
         if i > 32:
+            # minibatch = Experience(*zip(*random.sample(rb,32)))
             minibatch = Experience(*rb.sample(32))
-            # minibatch = Experience(*zip(*minibatch))
-            a = torch.FloatTensor(np.array(minibatch.state).astype(np.float32))
-            b = torch.FloatTensor(np.array(minibatch.next_state).astype(np.float32))
+            a = torch.FloatTensor(np.array(minibatch.state))
+            b = torch.FloatTensor(np.array(minibatch.next_state))
 
 test_func()

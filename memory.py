@@ -20,7 +20,7 @@ class ReplayBuffer(object):
     def __len__(self):
         return len(self._storage)
 
-    def add(self, obs_t, action, reward, obs_tp1, done):
+    def append(self, obs_t, action, reward, obs_tp1, done):
         data = (obs_t, action, reward, obs_tp1, done)
 
         if self._next_idx >= len(self._storage):
