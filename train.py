@@ -181,7 +181,7 @@ while global_steps < args.max_steps:
                         "optimizer_state_dict": optimizer.state_dict(),
                         "loss": loss
                     },
-                    append_timestamp(f"{args.model_path}/checkpoint_{args.env}")
+                    append_timestamp(f"{args.model_path}/checkpoint_{args.env}" + ari_suffix)
                     + f"_{global_steps}.tar")
 
     writer.add_scalar('training/avg_episode_loss', cumulative_loss / steps,
@@ -233,23 +233,9 @@ while global_steps < args.max_steps:
             # Logging
             writer.add_scalar('validation/policy_reward', cumulative_reward,
                               episode)
-    if args.model_path:
-        if global_steps % args.checkpoint_steps == 0:
-            for filename in os.listdir(f"{args.model_path}/"):
-                if "checkpoint" in filename:
-                    os.remove(f"{args.model_path}/" + filename)
-            torch.save(
-                {
-                    "global_steps": global_steps,
-                    "model_state_dict": agent.online.state_dict(),
-                    "optimizer_state_dict": optimizer.state_dict(),
-                    "loss": loss
-                },
-                append_timestamp(f"{args.model_path}/checkpoint_{args.env}")
-                + "_{global_steps}.tar")
 
 env.close()
 if args.model_path:
     torch.save(agent.online,
-               append_timestamp(f"{args.model_path}/{args.env}") + ".pth")
+               append_timestamp(f"{args.model_path}/{args.env}" + ari_suffix) + ".pth")
 
