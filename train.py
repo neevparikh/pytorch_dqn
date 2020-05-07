@@ -150,7 +150,7 @@ while global_steps < args.max_steps:
         optimizer.zero_grad()
 
         # Get loss
-        loss = agent.loss_func(minibatch, writer, episode)
+        loss = agent.loss_func(minibatch, writer, global_steps)
 
         cumulative_loss += loss.item()
         loss.backward()
