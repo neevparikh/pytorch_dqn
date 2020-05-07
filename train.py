@@ -7,8 +7,6 @@ import time
 import torch
 import os
 from torch.utils.tensorboard import SummaryWriter
-# from guppy import hpy
-# h = hpy()
 from utils import parse_args, make_atari, append_timestamp
 from model import DQN_agent, Experience
 
@@ -136,9 +134,8 @@ while global_steps < args.max_steps:
                                      args.reward_clip)
         else:
             clipped_reward = reward
-        agent.replay_buffer.append(
-            Experience(state, action, clipped_reward, next_state,
-                       int(done)))
+        agent.replay_buffer.append(state, action, clipped_reward, next_state,
+                       int(done))
         state = next_state
 
         # If not enough data, try again
@@ -147,24 +144,21 @@ while global_steps < args.max_steps:
             continue
 
         # Training loop
-        for i in range(args.update_steps):
-            # This is list<experiences>
-            minibatch = random.sample(agent.replay_buffer, args.batchsize)
+        minibatch = agent.replay_buffer.sample(args.batchsize)
 
-            # This is experience<list<states>, list<actions>, ...>
-            minibatch = Experience(*zip(*minibatch))
-            optimizer.zero_grad()
+        minibatch = Experience(*minibatch)
+        optimizer.zero_grad()
 
-            # Get loss
-            loss = agent.loss_func(minibatch, writer, episode)
+        # Get loss
+        loss = agent.loss_func(minibatch, writer, episode)
 
-            cumulative_loss += loss.item()
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(agent.online.parameters(),
-                                           args.gradient_clip)
-            # Update parameters
-            optimizer.step()
-            agent.sync_networks()
+        cumulative_loss += loss.item()
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(agent.online.parameters(),
+                                       args.gradient_clip)
+        # Update parameters
+        optimizer.step()
+        agent.sync_networks()
 
         # Average over update steps
         cumulative_loss /= args.update_steps

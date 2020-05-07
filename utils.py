@@ -5,11 +5,6 @@ import torch
 import argparse
 from datetime import datetime
 from atari_wrappers import AtariPreprocess, MaxAndSkipEnv, FrameStack
-from memory_profiler import profile
-
-def fill_numpy(lztup, out):
-    for i, lz in enumerate(lztup):
-        lz.place(out[i])
 
 def parse_args():
     # Parse input arguments
@@ -71,12 +66,12 @@ def parse_args():
                         required=False)
     parser.add_argument('--max-steps',
                         help='Number of steps to run for',
-                        type=int,
+                        type=lambda x: int(float(x)),
                         default=100000,
                         required=False)
     parser.add_argument('--checkpoint-steps',
                         help='Checkpoint every so often',
-                        type=int,
+                        type=lambda x: int(float(x)),
                         default=10000,
                         required=False)
     parser.add_argument('--test-policy-episodes',
@@ -86,18 +81,13 @@ def parse_args():
                         required=False)
     parser.add_argument('--warmup-period',
                         help='Number of steps to act randomly and not train',
-                        type=int,
+                        type=lambda x: int(float(x)),
                         default=50000,
                         required=False)
     parser.add_argument('--batchsize',
                         help='Number of experiences sampled from replay buffer',
                         type=int,
                         default=256,
-                        required=False)
-    parser.add_argument('--update-steps',
-                        help='Number of steps to update for per episode',
-                        type=int,
-                        default=1,
                         required=False)
     parser.add_argument('--gradient-clip',
                         help='How much to clip the gradients by',
@@ -112,7 +102,7 @@ def parse_args():
                         required=False)
     parser.add_argument('--epsilon-decay',
                         help='Parameter for epsilon decay',
-                        type=int,
+                        type=lambda x: int(float(x)),
                         default=1e3,
                         required=False)
     parser.add_argument('--epsilon-decay-end',
@@ -122,7 +112,7 @@ def parse_args():
                         required=False)
     parser.add_argument('--replay-buffer-size',
                         help='Max size of replay buffer',
-                        type=int,
+                        type=lambda x: int(float(x)),
                         default=500000,
                         required=False)
     parser.add_argument('--lr',
