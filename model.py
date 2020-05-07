@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 import random
-from collections import deque, namedtuple
+from collections import namedtuple
 
 from utils import sync_networks, conv2d_size_out
 from replay_buffer import ReplayBuffer
@@ -22,6 +22,7 @@ class DQN_Base_model(torch.nn.Module):
         self.action_space = action_space
         self.device = device
         self.num_actions = num_actions
+        self.epsilon = None
 
     def build_model(self):
         # output should be in batchsize x num_actions
@@ -216,10 +217,8 @@ class DQN_agent:
 
     def loss_func(self, minibatch, writer=None, writer_step=None):
         # Make tensors
-        state_tensor = torch.from_numpy(np.array(
-                    minibatch.state).astype(np.float32)).to(self.device)
-        next_state_tensor = torch.from_numpy(
-            np.array(minibatch.next_state).astype(np.float32)).to(self.device)
+        state_tensor = torch.as_tensor(minibatch.state.astype(np.float32)).to(self.device)
+        next_state_tensor = torch.as_tensor(minibatch.next_state.astype(np.float32)).to(self.device)
         action_tensor = torch.FloatTensor(minibatch.action).to(
             self.device, dtype=torch.float32)
         reward_tensor = torch.FloatTensor(minibatch.reward).to(

@@ -3,7 +3,6 @@ from atariari.benchmark.wrapper import AtariARIWrapper
 import time
 import numpy as np
 import random
-import time
 import torch
 import os
 from torch.utils.tensorboard import SummaryWriter
@@ -159,9 +158,6 @@ while global_steps < args.max_steps:
         # Update parameters
         optimizer.step()
         agent.sync_networks()
-
-        # Average over update steps
-        cumulative_loss /= args.update_steps
         
         if args.model_path:
             if global_steps % args.checkpoint_steps == 0:
