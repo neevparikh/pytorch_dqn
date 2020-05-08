@@ -163,9 +163,6 @@ while global_steps < args.max_steps:
         optimizer.step()
         agent.sync_networks()
 
-        # Average over update steps
-        cumulative_loss /= args.update_steps
-
         if args.model_path:
             if global_steps % args.checkpoint_steps == 0:
                 for filename in os.listdir(f"{args.model_path}/"):

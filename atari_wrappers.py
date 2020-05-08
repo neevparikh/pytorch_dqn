@@ -105,13 +105,9 @@ class LazyFrames(object):
         be huge for DQN's 1M frames replay buffers.  This object should only be
         converted to numpy array before being passed to the model."""
         self._frames = frames
-        self._out = None
 
     def _force(self):
-        if self._out is None:
-            self._out = np.stack(self._frames, axis=0)
-            self._frames = None
-        return self._out
+        return np.stack(self._frames, axis=0)
 
     def __array__(self, dtype=None):
         out = self._force()
@@ -120,14 +116,7 @@ class LazyFrames(object):
         return out
 
     def __len__(self):
-        return len(self._force())
+        return len(self._frames)
 
     def __getitem__(self, i):
-        return self._force()[i]
-
-    def count(self):
-        frames = self._force()
-        return frames.shape[frames.ndim - 1]
-
-    def frame(self, i):
-        return self._force()[..., i]
+        return self._frames[i]
