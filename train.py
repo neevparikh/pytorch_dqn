@@ -3,7 +3,6 @@ from atariari.benchmark.wrapper import AtariARIWrapper
 import time
 import numpy as np
 import random
-import time
 import torch
 import os
 from torch.utils.tensorboard import SummaryWriter
@@ -11,6 +10,15 @@ from utils import parse_args, make_atari, append_timestamp
 from model import DQN_agent, Experience
 
 args = parse_args()
+
+# Initialize environment
+if type(args.env) == str:
+    if args.ari:
+        env = AtariARIWrapper(gym.make(args.env))
+    else:
+        env = gym.make(args.env)
+else:
+    env = args.env
 
 # Setting cuda seeds
 if torch.cuda.is_available():
@@ -21,15 +29,7 @@ if torch.cuda.is_available():
 torch.manual_seed(args.seed)
 random.seed(args.seed)
 np.random.seed(args.seed)
-
-# Initialize environment
-if type(args.env) == str:
-    if args.ari:
-        env = AtariARIWrapper(gym.make(args.env))
-    else:
-        env = gym.make(args.env)
-else:
-    env = args.env
+env.seed(args.seed)
 
 if args.model_type == 'cnn':
     assert args.num_frames
@@ -47,12 +47,13 @@ else:
     device = torch.device('cpu')
 
 if args.ari:
-    # change the observation space to accurately represent 
+    # change the observation space to accurately represent
     # the shape of the labeled RAM observations
-    env.observation_space = gym.spaces.box.Box(0, 
-                                              255, # arbitrary max value
-                                              shape=(len(env.labels()),), 
-                                              dtype=np.uint8)
+    env.observation_space = gym.spaces.box.Box(
+        0,
+        255,  # arbitrary max value
+        shape=(len(env.labels()),),
+        dtype=np.uint8)
 
 # Initialize model
 agent_args = {
@@ -101,7 +102,9 @@ episode = 0
 start = time.time()
 end = time.time() + 1
 while global_steps < args.max_steps:
-    print(f"Episode: {episode}, steps: {global_steps}, FPS: {steps/(end - start)}")
+    print(
+        f"Episode: {episode}, steps: {global_steps}, FPS: {steps/(end - start)}"
+    )
     start = time.time()
     if args.ari:
         # reset the env and get the current labeled RAM
@@ -109,7 +112,7 @@ while global_steps < args.max_steps:
         state = np.array(list(env.labels().values()))
     else:
         state = env.reset()
-    
+
     done = False
     agent.set_epsilon(global_steps, writer)
 
@@ -135,7 +138,7 @@ while global_steps < args.max_steps:
         else:
             clipped_reward = reward
         agent.replay_buffer.append(state, action, clipped_reward, next_state,
-                       int(done))
+                                   int(done))
         state = next_state
 
         # If not enough data, try again
@@ -162,7 +165,7 @@ while global_steps < args.max_steps:
 
         # Average over update steps
         cumulative_loss /= args.update_steps
-        
+
         if args.model_path:
             if global_steps % args.checkpoint_steps == 0:
                 for filename in os.listdir(f"{args.model_path}/"):
@@ -175,8 +178,8 @@ while global_steps < args.max_steps:
                         "optimizer_state_dict": optimizer.state_dict(),
                         "loss": loss
                     },
-                    append_timestamp(f"{args.model_path}/checkpoint_{args.env}" + ari_suffix)
-                    + f"_{global_steps}.tar")
+                    append_timestamp(f"{args.model_path}/checkpoint_{args.env}"
+                                     + ari_suffix) + f"_{global_steps}.tar")
 
     writer.add_scalar('training/avg_episode_loss', cumulative_loss / steps,
                       episode)
@@ -213,9 +216,8 @@ while global_steps < args.max_steps:
                     state = np.array(list(info['labels'].values()))
                 else:
                     state, reward, done, _ = env.step(action)
-                    
-                action = agent.online.act(state,
-                                          0)  # passing in epsilon = 0
+
+                action = agent.online.act(state, 0)  # passing in epsilon = 0
 
                 # Update reward
                 cumulative_reward += reward
@@ -230,6 +232,6 @@ while global_steps < args.max_steps:
 
 env.close()
 if args.model_path:
-    torch.save(agent.online,
-               append_timestamp(f"{args.model_path}/{args.env}" + ari_suffix) + ".pth")
-
+    torch.save(
+        agent.online,
+        append_timestamp(f"{args.model_path}/{args.env}" + ari_suffix) + ".pth")

@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 import random
-from collections import deque, namedtuple
+from collections import namedtuple
 
 from utils import sync_networks, conv2d_size_out
 from replay_buffer import ReplayBuffer
