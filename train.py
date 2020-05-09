@@ -21,6 +21,22 @@ if type(args.env) == str:
 else:
     env = args.env
 
+# Get uuid for run 
+if args.uuid == 'env':
+    uuid_tag = args.env
+elif args.uuid == 'random':
+    import uuid 
+    uuid_tag = uuid.uuid4()
+else:
+    uuid_tag = args.uuid
+
+# Set tag for this run
+run_tag = args.env
+run_tag += args.uuid if args.uuid != 'env' else ''
+run_tag += '_ari' if args.ari else ''
+run_tag += '_' + str(args.seed)
+
+
 # Setting cuda seeds
 if torch.cuda.is_available():
     torch.backends.cuda.deterministic = True
@@ -94,8 +110,7 @@ if args.model_path:
 if args.output_path:
     writer = SummaryWriter(args.output_path)
 else:
-    ari_suffix = '_ari' if args.ari else ''
-    writer = SummaryWriter(comment=args.env + ari_suffix + str(args.seed))
+    writer = SummaryWriter(comment=run_tag)
 
 # Episode loop
 global_steps = 0
@@ -173,7 +188,7 @@ while global_steps < args.max_steps:
         if args.model_path:
             if global_steps % args.checkpoint_steps == 0:
                 for filename in os.listdir(f"{args.model_path}/"):
-                    if "checkpoint" in filename:
+                    if "checkpoint" in filename and args.env in filename:
                         os.remove(f"{args.model_path}/" + filename)
                 torch.save(
                     {
@@ -182,8 +197,8 @@ while global_steps < args.max_steps:
                         "optimizer_state_dict": optimizer.state_dict(),
                         "epsiode": episode,
                     },
-                    append_timestamp(f"{args.model_path}/checkpoint_{args.env}"
-                                     + ari_suffix) + f"_{global_steps}.tar")
+                    append_timestamp(f"{args.model_path}/checkpoint_{run_tag}")
+                        + f"_{global_steps}.tar")
 
     writer.add_scalar('training/avg_episode_loss', cumulative_loss / steps,
                       episode)
@@ -238,4 +253,4 @@ env.close()
 if args.model_path:
     torch.save(
         agent.online,
-        append_timestamp(f"{args.model_path}/{args.env}" + ari_suffix) + ".pth")
+        append_timestamp(f"{args.model_path}/{run_tag}") + ".pth")

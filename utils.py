@@ -15,6 +15,15 @@ def parse_args():
                         help='The gym environment to train on',
                         type=str,
                         required=True)
+    parser.add_argument('--uuid',
+                        help="""UUID for the experient run. 
+                        `env` uses environment name,
+                        `random` uses a random UUID 
+                            (i.e. 2b25d648-ce34-4523-b409-35247d481e32),
+                        anything else is custom""",
+                        default='env',
+                        type=str,
+                        required=False)
     parser.add_argument('--ari',
                         help='Whether to use annotated RAM',
                         action='store_true',
