@@ -133,5 +133,6 @@ runs/
 diagnostics
 saved_models/
 profile.out
+*.tar 
+*.pth
 .idea
-test.py
