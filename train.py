@@ -80,6 +80,7 @@ optimizer = torch.optim.Adam(agent.online.parameters(), lr=args.lr)
 if args.load_checkpoint_path:
     checkpoint = torch.load(args.load_checkpoint_path)
     agent.online.load_state_dict(checkpoint['model_state_dict'])
+    agent.target.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     agent.online.train()
 
@@ -101,6 +102,11 @@ steps = 1
 episode = 0
 start = time.time()
 end = time.time() + 1
+
+if args.load_checkpoint_path and checkpoint is not None:
+    global_steps = checkpoint['global_steps']
+    episode = checkpoint['episode']
+
 while global_steps < args.max_steps:
     print(
         f"Episode: {episode}, steps: {global_steps}, FPS: {steps/(end - start)}"
@@ -173,7 +179,7 @@ while global_steps < args.max_steps:
                         "global_steps": global_steps,
                         "model_state_dict": agent.online.state_dict(),
                         "optimizer_state_dict": optimizer.state_dict(),
-                        "loss": loss
+                        "epsiode": episode,
                     },
                     append_timestamp(f"{args.model_path}/checkpoint_{args.env}"
                                      + ari_suffix) + f"_{global_steps}.tar")
