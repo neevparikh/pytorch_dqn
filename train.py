@@ -7,7 +7,8 @@ import torch
 import os
 from torch.utils.tensorboard import SummaryWriter
 from utils import parse_args, make_atari, append_timestamp
-from model import DQN_agent, Experience
+from model import DQN_agent
+from replay_buffer import Experience
 
 args = parse_args()
 
