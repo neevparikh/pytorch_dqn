@@ -195,7 +195,7 @@ while global_steps < args.max_steps:
                         "global_steps": global_steps,
                         "model_state_dict": agent.online.state_dict(),
                         "optimizer_state_dict": optimizer.state_dict(),
-                        "epsiode": episode,
+                        "episode": episode,
                     },
                     append_timestamp(f"{args.model_path}/checkpoint_{run_tag}")
                         + f"_{global_steps}.tar")
