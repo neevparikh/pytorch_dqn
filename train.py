@@ -102,12 +102,10 @@ if args.load_checkpoint_path:
 
 # Save path
 if args.model_path:
-    if not os.path.isdir(args.model_path):
-        os.makedirs(args.model_path)
+    os.makedirs(args.model_path, exists_ok=True)
 
 if args.output_path:
-    if not os.path.isdir(args.output_path):
-        os.makedirs(args.output_path)
+    os.makedirs(args.output_path, exist_ok=True)
 
 # Logging via csv
 if args.output_path:
