@@ -1,12 +1,11 @@
 import gym
-from atariari.benchmark.wrapper import AtariARIWrapper
 import time
 import numpy as np
 import random
 import torch
 import os
 from torch.utils.tensorboard import SummaryWriter
-from utils import parse_args, make_atari, append_timestamp
+from utils import parse_args, make_ari, make_atari, append_timestamp
 from model import DQN_agent
 from replay_buffer import Experience
 
@@ -14,12 +13,11 @@ args = parse_args()
 
 # Initialize environment
 if type(args.env) == str:
-    if args.ari:
-        env = AtariARIWrapper(gym.make(args.env))
-    else:
-        env = gym.make(args.env)
+    env = gym.make(args.env)
+    test_env = gym.make(args.env)
 else:
     env = args.env
+    test_env = args.env
 
 # Get uuid for run
 if args.uuid == 'env':
@@ -49,9 +47,16 @@ env.seed(args.seed)
 
 if args.model_type == 'cnn':
     assert args.num_frames
-    if args.no_atari:
+    if not args.no_atari:
         print("Using atari preprocessing")
         env = make_atari(env, args.num_frames)
+        test_env = make_atari(test_env, args.num_frames)
+
+if args.ari:
+    print("Using ARI")
+    env = make_ari(env)
+    test_env = make_ari(test_env)
+
 if type(env.action_space) != gym.spaces.Discrete:
     raise NotImplementedError("DQN for continuous action_spaces hasn't been\
             implemented")
@@ -61,15 +66,6 @@ if args.gpu and torch.cuda.is_available():
     device = torch.device('cuda:0')
 else:
     device = torch.device('cpu')
-
-if args.ari:
-    # change the observation space to accurately represent
-    # the shape of the labeled RAM observations
-    env.observation_space = gym.spaces.box.Box(
-        0,
-        255,  # arbitrary max value
-        shape=(len(env.labels()),),
-        dtype=np.uint8)
 
 # Initialize model
 agent_args = {
@@ -132,12 +128,7 @@ while global_steps < args.max_steps:
         f"Episode: {episode}, steps: {global_steps}, FPS: {steps/(end - start)}"
     )
     start = time.time()
-    if args.ari:
-        # reset the env and get the current labeled RAM
-        env.reset()
-        state = np.array(list(env.labels().values()))
-    else:
-        state = env.reset()
+    state = env.reset()
 
     done = False
     agent.set_epsilon(global_steps, writer)
@@ -149,13 +140,7 @@ while global_steps < args.max_steps:
         global_steps += 1
         action = agent.online.act(state, agent.online.epsilon)
 
-        if args.ari:
-            # we don't need the obs here, just the labels in info
-            _, reward, done, info = env.step(action)
-            # grab the labeled RAM out of info and put as next_state
-            next_state = np.array(list(info['labels'].values()))
-        else:
-            next_state, reward, done, info = env.step(action)
+        next_state, reward, done, info = env.step(action)
 
         steps += 1
         if args.reward_clip:
@@ -205,59 +190,50 @@ while global_steps < args.max_steps:
                     append_timestamp(f"{args.model_path}/checkpoint_{run_tag}")
                     + f"_{global_steps}.tar")
 
+        # Testing policy
+        if global_steps % args.test_policy_steps == 0:
+            with torch.no_grad():
+                # Reset environment
+                cumulative_reward = 0
+
+                state = test_env.reset()
+
+                action = agent.online.act(state, 0)
+                done = False
+                render = args.render and (episode % args.render_episodes == 0)
+
+                # Test episode loop
+                while not done:
+                    # Take action in env
+                    if render:
+                        test_env.render()
+
+                    state, reward, done, _ = test_env.step(action)
+
+                    # passing in epsilon = 0
+                    action = agent.online.act(state, 0)
+
+                    # Update reward
+                    cumulative_reward += reward
+
+                print(f"Policy_reward for test: {cumulative_reward}")
+
+                # Logging
+                writer.add_scalar('validation/policy_reward', cumulative_reward,
+                                  episode)
+                if log_filename:
+                    with open(log_filename, "a") as f:
+                        f.write(
+                            f"{episode},{global_steps},{cumulative_reward},\n")
+
     writer.add_scalar('training/avg_episode_loss', cumulative_loss / steps,
                       episode)
     end = time.time()
     episode += 1
-    if len(agent.replay_buffer
-          ) < args.batchsize or global_steps < args.warmup_period:
-        continue
-
-    # Testing policy
-    if episode % args.test_policy_episodes == 0:
-        with torch.no_grad():
-            # Reset environment
-            cumulative_reward = 0
-
-            if args.ari:
-                env.reset()
-                state = np.array(list(env.labels().values()))
-            else:
-                state = env.reset()
-
-            action = agent.online.act(state, 0)
-            done = False
-            render = args.render and (episode % args.render_episodes == 0)
-
-            # Test episode loop
-            while not done:
-                # Take action in env
-                if render:
-                    env.render()
-
-                if args.ari:
-                    _, reward, done, info = env.step(action)
-                    state = np.array(list(info['labels'].values()))
-                else:
-                    state, reward, done, _ = env.step(action)
-
-                action = agent.online.act(state, 0)  # passing in epsilon = 0
-
-                # Update reward
-                cumulative_reward += reward
-
-            env.close()  # close viewer
-
-            print(f"Policy_reward for test: {cumulative_reward}")
-
-            # Logging
-            writer.add_scalar('validation/policy_reward', cumulative_reward,
-                              episode)
-            if log_filename:
-                with open(log_filename, "a") as f:
-                    f.write(f"{episode},{global_steps},{cumulative_reward},\n")
 
 env.close()
+test_env.close()
+
 if args.model_path:
     torch.save(agent.online,
                append_timestamp(f"{args.model_path}/{run_tag}") + ".pth")

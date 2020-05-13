@@ -3,6 +3,33 @@ from collections import deque
 import numpy as np
 import torchvision.transforms as T
 
+
+class ResetARI(gym.Wrapper):
+
+    def __init__(self, env):
+        gym.Wrapper.__init__(self, env)
+
+        # change the observation space to accurately represent
+        # the shape of the labeled RAM observations
+        self.observation_space = gym.spaces.Box(
+            0,
+            255,  # max value
+            shape=(len(self.env.labels()),),
+            dtype=np.uint8)
+
+    def reset(self, **kwargs):
+        self.env.reset(**kwargs)
+        # reset the env and get the current labeled RAM
+        return np.array(list(self.env.labels().values()))
+
+    def step(self, action):
+        # we don't need the obs here, just the labels in info
+        _, reward, done, info = self.env.step(action)
+        # grab the labeled RAM out of info and put as next_state
+        next_state = np.array(list(info['labels'].values()))
+        return next_state, reward, done, info
+
+
 # Adapted from OpenAI Baselines:
 # https://github.com/openai/baselines/blob/master/baselines/common/atari_wrappers.py
 class AtariPreprocess(gym.Wrapper):
@@ -30,6 +57,7 @@ class AtariPreprocess(gym.Wrapper):
     def step(self, action):
         next_state, reward, done, info = self.env.step(action)
         return self.transforms(next_state), reward, done, info
+
 
 class MaxAndSkipEnv(gym.Wrapper):
 
@@ -61,6 +89,7 @@ class MaxAndSkipEnv(gym.Wrapper):
         # doesn't matter
         max_frame = self._obs_buffer.max(axis=0)
         return max_frame, total_reward, done, info
+
 
 class FrameStack(gym.Wrapper):
 

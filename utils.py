@@ -4,7 +4,8 @@ import numpy as np
 import torch
 import argparse
 from datetime import datetime
-from atari_wrappers import AtariPreprocess, MaxAndSkipEnv, FrameStack
+from gym_wrappers import AtariPreprocess, MaxAndSkipEnv, FrameStack, ResetARI
+from atariari.benchmark.wrapper import AtariARIWrapper
 
 def parse_args():
     # Parse input arguments
@@ -56,8 +57,8 @@ def parse_args():
                         type=str,
                         required=False)
     parser.add_argument('--no-atari',
-                        help='Use atari preprocessing',
-                        action='store_false',
+                        help='Do not use atari preprocessing',
+                        action='store_true',
                         required=False)
     parser.add_argument('--gpu',
                         help='Use the gpu or not',
@@ -180,6 +181,10 @@ def make_atari(env, num_frames):
     """ Wrap env in atari processed env """
     return FrameStack(MaxAndSkipEnv(AtariPreprocess(env), 4),
                       num_frames)
+
+def make_ari(env):
+    """ Wrap env in reset to match observation """
+    return ResetARI(AtariARIWrapper(env))
 
 
 # Thanks to RoshanRane - Pytorch forums
