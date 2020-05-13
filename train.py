@@ -105,9 +105,15 @@ if args.model_path:
     if not os.path.isdir(args.model_path):
         os.makedirs(args.model_path)
 
+if args.output_path:
+    if not os.path.isdir(args.output_path):
+        os.makedirs(args.output_path)
+
 # Logging via csv
 if args.output_path:
     log_filename = f"{args.output_path}/{run_tag}.csv"
+    with open(log_filename, "w") as f:
+        f.write("episode,global_steps,cumulative_reward,\n")
 
 # Logging for tensorboard
 writer = SummaryWriter(comment=run_tag)
@@ -249,8 +255,9 @@ while global_steps < args.max_steps:
             # Logging
             writer.add_scalar('validation/policy_reward', cumulative_reward,
                               episode)
-            with open(log_filename, "a") as f:
-                f.write(f"{episode},{global_steps},{cumulative_reward}\n")
+            if log_filename:
+                with open(log_filename, "a") as f:
+                    f.write(f"{episode},{global_steps},{cumulative_reward},\n")
 
 env.close()
 if args.model_path:
