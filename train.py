@@ -44,6 +44,7 @@ torch.manual_seed(args.seed)
 random.seed(args.seed)
 np.random.seed(args.seed)
 env.seed(args.seed)
+test_env.seed(args.seed)
 
 if args.model_type == 'cnn':
     assert args.num_frames
