@@ -32,9 +32,9 @@ else:
 
 # Set tag for this run
 run_tag = args.env
-run_tag += args.uuid if args.uuid != 'env' else ''
+run_tag += '_' + args.uuid if args.uuid != 'env' else ''
 run_tag += '_ari' if args.ari else ''
-run_tag += '_' + str(args.seed)
+run_tag += '_seed_' + str(args.seed)
 
 # Setting cuda seeds
 if torch.cuda.is_available():

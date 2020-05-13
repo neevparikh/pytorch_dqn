@@ -13,5 +13,6 @@ python train.py \
 --epsilon-decay-end 0.05 \
 --test-policy-episodes 10 \
 --target-moving-average 5e-3 \
---lr 0.001 \
+--lr 5e-3 \
+--uuid "lr5e-3" \
 --seed 5
