@@ -91,8 +91,8 @@ def parse_args():
                         required=False)
     parser.add_argument('--test-policy-steps',
                         help='Policy is tested every these many steps',
-                        type=int,
-                        default=5000,
+                        type=lambda x: int(float(x)),
+                        default=1000,
                         required=False)
     parser.add_argument('--warmup-period',
                         help='Number of steps to act randomly and not train',
@@ -122,7 +122,7 @@ def parse_args():
                         required=False)
     parser.add_argument('--epsilon-decay-end',
                         help='Parameter for epsilon decay end',
-                        type=int,
+                        type=float,
                         default=0.1,
                         required=False)
     parser.add_argument('--replay-buffer-size',

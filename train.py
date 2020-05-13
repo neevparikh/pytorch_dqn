@@ -98,7 +98,7 @@ if args.load_checkpoint_path:
 
 # Save path
 if args.model_path:
-    os.makedirs(args.model_path, exists_ok=True)
+    os.makedirs(args.model_path, exist_ok=True)
 
 if args.output_path:
     os.makedirs(args.output_path, exist_ok=True)
@@ -196,31 +196,32 @@ while global_steps < args.max_steps:
                 # Reset environment
                 cumulative_reward = 0
 
-                state = test_env.reset()
+                test_state = test_env.reset()
 
-                action = agent.online.act(state, 0)
-                done = False
+                test_action = agent.online.act(state, 0)
+                test_done = False
                 render = args.render and (episode % args.render_episodes == 0)
 
                 # Test episode loop
-                while not done:
+                while not test_done:
                     # Take action in env
                     if render:
                         test_env.render()
 
-                    state, reward, done, _ = test_env.step(action)
+                    test_state, test_reward, test_done, _ = test_env.step(
+                        test_action)
 
                     # passing in epsilon = 0
-                    action = agent.online.act(state, 0)
+                    test_action = agent.online.act(state, 0)
 
                     # Update reward
-                    cumulative_reward += reward
+                    cumulative_reward += test_reward
 
                 print(f"Policy_reward for test: {cumulative_reward}")
 
                 # Logging
                 writer.add_scalar('validation/policy_reward', cumulative_reward,
-                                  episode)
+                                  global_steps)
                 if log_filename:
                     with open(log_filename, "a") as f:
                         f.write(

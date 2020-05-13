@@ -4,14 +4,14 @@ python train.py \
 --model-type cnn \
 --batchsize 32 \
 --replay-buffer-size 1e6 \
---warmup-period 5e3  \
+--warmup-period 5e4  \
 --max-steps 5e6 \
 --reward-clip 1 \
 --model-path "./saved_models" \
---output_path "./reward_log" \
+--output-path "./reward_log" \
 --epsilon-decay 1.5e6 \
 --epsilon-decay-end 0.05 \
---test-policy-steps 250000 \
+--test-policy-steps 2.5e5 \
 --target-moving-average 5e-3 \
 --lr 5e-3 \
 --uuid "lr5e-3" \
