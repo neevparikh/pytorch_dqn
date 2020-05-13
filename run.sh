@@ -11,7 +11,7 @@ python train.py \
 --output_path "./reward_log" \
 --epsilon-decay 1.5e6 \
 --epsilon-decay-end 0.05 \
---test-policy-episodes 10 \
+--test-policy-steps 250000 \
 --target-moving-average 5e-3 \
 --lr 5e-3 \
 --uuid "lr5e-3" \

@@ -7,6 +7,7 @@ from datetime import datetime
 from gym_wrappers import AtariPreprocess, MaxAndSkipEnv, FrameStack, ResetARI
 from atariari.benchmark.wrapper import AtariARIWrapper
 
+
 def parse_args():
     # Parse input arguments
     # Use --help to see a pretty description of the arguments
@@ -88,10 +89,10 @@ def parse_args():
                         type=lambda x: int(float(x)),
                         default=10000,
                         required=False)
-    parser.add_argument('--test-policy-episodes', # TODO change to steps
-                        help='Policy is tested every these many episodes',
+    parser.add_argument('--test-policy-steps',
+                        help='Policy is tested every these many steps',
                         type=int,
-                        default=5,
+                        default=5000,
                         required=False)
     parser.add_argument('--warmup-period',
                         help='Number of steps to act randomly and not train',
@@ -179,8 +180,8 @@ def deque_to_tensor(last_num_frames):
 
 def make_atari(env, num_frames):
     """ Wrap env in atari processed env """
-    return FrameStack(MaxAndSkipEnv(AtariPreprocess(env), 4),
-                      num_frames)
+    return FrameStack(MaxAndSkipEnv(AtariPreprocess(env), 4), num_frames)
+
 
 def make_ari(env):
     """ Wrap env in reset to match observation """
