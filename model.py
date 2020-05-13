@@ -249,7 +249,7 @@ class DQN_agent:
                               writer_step)
             writer.add_scalar('training/batch_reward', reward_tensor.mean(),
                               writer_step)
-        return torch.nn.functional.mse_loss(q_label_batch, q_pred_batch)
+        return torch.nn.functional.smooth_l1_loss(q_label_batch, q_pred_batch)
 
     def sync_networks(self):
         sync_networks(self.target, self.online, self.target_moving_average)

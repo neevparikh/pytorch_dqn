@@ -179,8 +179,9 @@ while global_steps < args.max_steps:
 
         cumulative_loss += loss.item()
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(agent.online.parameters(),
-                                       args.gradient_clip)
+        if args.gradient_clip:
+            torch.nn.utils.clip_grad_norm_(agent.online.parameters(),
+                                           args.gradient_clip)
         # Update parameters
         optimizer.step()
         agent.sync_networks()

@@ -20,7 +20,11 @@ def parse_args():
                         `env` uses environment name,
                         `random` uses a random UUID 
                             (i.e. 2b25d648-ce34-4523-b409-35247d481e32),
-                        anything else is custom""",
+                        anything else is custom, example:
+                        PongNoFrameskip_ari_5 (uuid = env)
+                        PongNoFrameskip_64f9c4c9-bee5-44a6-9a61-d70267d9d623_ari_5 (uuid = random)
+                        PongNoFrameskip_lr_1e-5_ari_5 (uuid = lr_1e-5 (custom))
+                        """,
                         default='env',
                         type=str,
                         required=False)
@@ -83,7 +87,7 @@ def parse_args():
                         type=lambda x: int(float(x)),
                         default=10000,
                         required=False)
-    parser.add_argument('--test-policy-episodes',
+    parser.add_argument('--test-policy-episodes', # TODO change to steps
                         help='Policy is tested every these many episodes',
                         type=int,
                         default=5,
@@ -99,9 +103,9 @@ def parse_args():
                         default=256,
                         required=False)
     parser.add_argument('--gradient-clip',
-                        help='How much to clip the gradients by',
+                        help='How much to clip the gradients by, 0 is none',
                         type=float,
-                        default=2.5,
+                        default=0,
                         required=False)
     parser.add_argument('--reward-clip',
                         help='How much to clip reward, clipped in [-rc, rc], 0 \
