@@ -21,11 +21,11 @@ if type(args.env) == str:
 else:
     env = args.env
 
-# Get uuid for run 
+# Get uuid for run
 if args.uuid == 'env':
     uuid_tag = args.env
 elif args.uuid == 'random':
-    import uuid 
+    import uuid
     uuid_tag = uuid.uuid4()
 else:
     uuid_tag = args.uuid
@@ -35,7 +35,6 @@ run_tag = args.env
 run_tag += args.uuid if args.uuid != 'env' else ''
 run_tag += '_ari' if args.ari else ''
 run_tag += '_' + str(args.seed)
-
 
 # Setting cuda seeds
 if torch.cuda.is_available():
@@ -106,11 +105,12 @@ if args.model_path:
     if not os.path.isdir(args.model_path):
         os.makedirs(args.model_path)
 
-# Logging for tensorboard
+# Logging via csv
 if args.output_path:
-    writer = SummaryWriter(args.output_path)
-else:
-    writer = SummaryWriter(comment=run_tag)
+    log_filename = f"{args.output_path}/{run_tag}.csv"
+
+# Logging for tensorboard
+writer = SummaryWriter(comment=run_tag)
 
 # Episode loop
 global_steps = 0
@@ -199,7 +199,7 @@ while global_steps < args.max_steps:
                         "episode": episode,
                     },
                     append_timestamp(f"{args.model_path}/checkpoint_{run_tag}")
-                        + f"_{global_steps}.tar")
+                    + f"_{global_steps}.tar")
 
     writer.add_scalar('training/avg_episode_loss', cumulative_loss / steps,
                       episode)
@@ -249,9 +249,10 @@ while global_steps < args.max_steps:
             # Logging
             writer.add_scalar('validation/policy_reward', cumulative_reward,
                               episode)
+            with open(log_filename, "a") as f:
+                f.write(f"{episode},{global_steps},{cumulative_reward}\n")
 
 env.close()
 if args.model_path:
-    torch.save(
-        agent.online,
-        append_timestamp(f"{args.model_path}/{run_tag}") + ".pth")
+    torch.save(agent.online,
+               append_timestamp(f"{args.model_path}/{run_tag}") + ".pth")
