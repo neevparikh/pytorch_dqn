@@ -132,6 +132,7 @@ dmypy.json
 runs/
 diagnostics
 saved_models/
+reward_log/
 profile.out
 *.tar 
 *.pth
