@@ -38,7 +38,7 @@ def parse_args(custom_args=None):
                         help='Amount of RAM to request *per node* (in GB)')
     parser.add_argument('--env', type=str, default='./env',
                         help='Path to virtualenv')
-    parser.add_argument('--duration', choices=['test', 'short', 'long', 'vlong'], default='vlong',
+    parser.add_argument('--duration', choices=['test', 'short', 'long', 'slong', 'vlong'], default='long',
                         help='Expected duration of job')
     parser.add_argument('-t','--taskid', type=int, default=1,
                         help='Task ID of first task')
@@ -108,7 +108,8 @@ def run(custom_args=None):
     script_body='''#!/bin/bash
 
 module load python/3.7.4
-module load cuda/9.2.148
+module load cuda/10.2
+module load cudnn/7.6.5
 source {}
 {} '''.format(venv_path, args.command)
 
@@ -134,6 +135,7 @@ source {}
         'test': '0:10:00',  # 10 minutes
         'short': '1:00:00',  # 1 hour
         'long': '1-00:00:00',  # 1 day
+        'slong': '2-00:00:00',  # 2 days
         'vlong': '7-00:00:00',  # 1 week
     }
     cmd += '-t {} '.format(duration_map[args.duration])
@@ -142,7 +144,7 @@ source {}
     cmd += '-n {} '.format(args.cpus)
     if args.gpus > 0:
         partition = 'gpu-debug' if args.duration in ['test','short'] else 'gpu'
-        cmd += '-p {} --gres=gpu:{}'.format(partition, args.gpus)
+        cmd += '-p {} --gres=gpu:{} '.format(partition, args.gpus)
     else:
         partition = 'debug' if args.duration in ['test','short'] else 'batch'
         cmd += '-p {} '.format(partition)
@@ -152,8 +154,8 @@ source {}
 
     # Logging
     os.makedirs("./slurm/logs/", exist_ok=True)
-    cmd += '-o ./slurm/logs/{}.o%A.%a '.format(args.jobname) # save stdout to file
-    cmd += '-e ./slurm/logs/{}.e%A.%a '.format(args.jobname) # save stderr to file
+    cmd += '-o ./slurm/logs/{}.o '.format(args.jobname) # save stdout to file
+    cmd += '-e ./slurm/logs/{}.e '.format(args.jobname) # save stderr to file
 
     # The --parsable flag causes sbatch to print the jobid to stdout. We read the
     # jobid with subprocess.check_output(), and use it to delay the email job

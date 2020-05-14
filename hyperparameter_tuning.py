@@ -3,13 +3,14 @@ from cluster_script import run as run_csgrid
 from ccv_script import run as run_ccv
 """ Tuning hyperparameters """
 
+SEED_START = 0
 SEEDS_PER_RUN = 3
 MODEL_BASE = "./saved_models"
 OUTPUT_BASE = "./reward_log"
 
 # Program args
 default_args = [
-    "--env", "BreakoutNoFrameskip-v4",
+    "--env", "SeaquestNoFrameskip-v4",
     "--model-type", "cnn",
     "--gpu",
     "--batchsize", "32",
@@ -35,15 +36,15 @@ if __name__ == "__main__":
 python hyperparameter_tuning.py /path/to/env/ [ccv | csgrid]""")
     ENV_PATH = sys.argv[1]
     grid_type = sys.argv[2]
-    seed = 0
+    seed = SEED_START
     # Cluster args
     if grid_type == "ccv":
         cluster_args = [
-            "--cpus", "4",
+            "--cpus", "2",
             "--gpus", "1",
-            "--mem", "12",
+            "--mem", "10",
             "--env", ENV_PATH,
-            "--duration", "vlong",
+            "--duration", "slong",
         ]
     elif grid_type == "csgrid":
         cluster_args = [
