@@ -1,6 +1,7 @@
 import sys
-from cluster_script import run as run_cluster
-""" Tuning hyperparamters """
+from cluster_script import run as run_csgrid
+from ccv_script import run as run_ccv
+""" Tuning hyperparameters """
 
 SEEDS_PER_RUN = 3
 MODEL_BASE = "./saved_models"
@@ -29,16 +30,31 @@ tuning_values = {
 
 
 if __name__ == "__main__": 
-    if len(sys.argv) != 2:
-        raise RuntimeError(f"Need only one argument: path to venv. Got {len(sys.argv)}")
+    if len(sys.argv) != 3:
+        raise RuntimeError("""Usage:
+python hyperparameter_tuning.py /path/to/env/ [ccv | csgrid]""")
     ENV_PATH = sys.argv[1]
+    grid_type = sys.argv[2]
     seed = 0
     # Cluster args
-    cluster_args = [
-        "--jobtype", "gpu",
-        "--env", ENV_PATH,
-        "--duration", "vlong",
-    ]
+    if grid_type == "ccv":
+        cluster_args = [
+            "--cpus", "4",
+            "--gpus", "1",
+            "--mem", "12",
+            "--env", ENV_PATH,
+            "--duration", "vlong",
+        ]
+    elif grid_type == "csgrid":
+        cluster_args = [
+            "--jobtype", "gpu",
+            "--env", ENV_PATH,
+            "--duration", "vlong",
+        ]
+    else:
+        raise RuntimeError("""Usage:
+python hyperparameter_tuning.py /path/to/env/ [ccv | csgrid]""")
+
     for i, (arg1, value_range1) in enumerate(tuning_values.items()):
         for j, (arg2, value_range2) in enumerate(tuning_values.items()):
             if j > i:
@@ -59,5 +75,12 @@ if __name__ == "__main__":
                         cmd = "python train.py " + ' '.join(run_args)
                         cluster_args += ["--command", cmd]
                         cluster_args += ["--jobname", f"{run_tag.replace('-','_')}_{str(seed)}"]
-                        run_cluster(custom_args=cluster_args)
+                        if grid_type == "ccv":
+                            run_ccv(custom_args=cluster_args)
+                        elif grid_type == "csgrid":
+                            run_csgrid(custom_args=cluster_args)
+                        else:
+                            raise RuntimeError("""Usage:
+python hyperparameter_tuning.py /path/to/env/ [ccv | csgrid]""")
+
                         seed += 1
