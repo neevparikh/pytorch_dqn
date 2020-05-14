@@ -91,9 +91,13 @@ def launch(cmd, args):
             sys.exit()
 
 
-def run():
+def run(custom_args=None):
     """Build the bash script and send it to the cluster"""
-    args = parse_args()
+    if custom_args:
+        parser = argparse.ArgumentParser()
+        args = parser.parse_args(custom_args)
+    else: 
+        args = parse_args()
 
     # Define the bash script that qsub should run (with values
     # that need to be filled in using the input args).
