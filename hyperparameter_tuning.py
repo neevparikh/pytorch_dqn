@@ -73,9 +73,7 @@ python hyperparameter_tuning.py /path/to/env/ [ccv | csgrid]""")
                         run_args += ["--seed", str(seed)]
                         run_args += ["--model-path", f"{MODEL_BASE}/{clean_arg_name1}_{clean_arg_name2}/{value1}_{value2}"]
                         run_args += ["--output-path", f"{OUTPUT_BASE}/{clean_arg_name1}_{clean_arg_name2}/{value1}_{value2}"]
-                        cmd = "python train.py " + ' '.join(run_args)
-                        if grid_type == "ccv":
-                            cmd = 'unbuffer ' + cmd    
+                        cmd = "unbuffer python train.py " + ' '.join(run_args)
                         cluster_args += ["--command", cmd]
                         cluster_args += ["--jobname", f"{run_tag.replace('-','_')}_{str(seed)}"]
                         if grid_type == "ccv":
