@@ -10,6 +10,7 @@ OUTPUT_BASE = "./reward_log"
 default_args = [
     "--env", "BreakoutNoFrameskip-v4",
     "--model-type", "cnn",
+    "--gpu",
     "--batchsize", "32",
     "--replay-buffer-size", "1e6",
     "--warmup-period", "5e4",
