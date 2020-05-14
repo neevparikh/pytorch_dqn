@@ -1,10 +1,10 @@
+import sys
 from cluster_script import run
 """ Tuning hyperparamters """
 
 SEEDS_PER_RUN = 3
 MODEL_BASE = "./saved_models"
 OUTPUT_BASE = "./reward_log"
-ENV_PATH = ""
 
 # Program args
 default_args = [
@@ -26,18 +26,19 @@ tuning_values = {
     "--lr": ["5e-5", "2e-5", "7e-6"],
 }
 
-# Cluster args
-cluster_args = [
-    "--jobtype", "gpu",
-    "--env", ENV_PATH,
-    "--nresources", "1",
-    "--duration", "vlong",
-]
 
 if __name__ == "__main__": 
-    if ENV_PATH == "":
-        raise ValueError(f"Need path to virtual env, got {ENV_PATH}")
+    if sys.argv[0] != 1:
+        raise RuntimeError(f"Need only one argument, path to venv. Got {sys.argv[0]}")
+    ENV_PATH = sys.argv[1]
     seed = 0
+    # Cluster args
+    cluster_args = [
+        "--jobtype", "gpu",
+        "--env", ENV_PATH,
+        "--nresources", "1",
+        "--duration", "vlong",
+    ]
     for arg, value_range in tuning_values:
         for value in value_range:
             for _ in range(SEEDS_PER_RUN):
