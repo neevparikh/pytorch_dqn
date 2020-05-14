@@ -18,7 +18,7 @@ import re
 import subprocess
 import sys
 
-def parse_args():
+def parse_args(custom_args=None):
     """Parse input arguments
 
     Use --help to see a pretty description of the arguments
@@ -56,7 +56,10 @@ def parse_args():
                              ' addr1@brown.edu[, addr2@brown.edu]')
     parser.add_argument('--hold_jid', type=int, default=None,
                         help='Hold job until the specified job ID has finished')
-    args = parser.parse_args()
+    if custom_args:
+        args = parser.parse_args(custom_args)
+    else:
+        args = parser.parse_args()
 
     if args.jobname == defaultjob:
         args.jobname = "run{}".format(args.taskid)
@@ -94,11 +97,10 @@ def launch(cmd, args):
 def run(custom_args=None):
     """Build the bash script and send it to the cluster"""
     if custom_args:
-        parser = argparse.ArgumentParser()
-        args = parser.parse_args(custom_args)
+        args = parse_args(custom_args)
     else: 
         args = parse_args()
-
+    
     # Define the bash script that qsub should run (with values
     # that need to be filled in using the input args).
     venv_path = os.path.join(args.env, 'bin', 'activate')
