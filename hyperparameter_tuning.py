@@ -18,7 +18,7 @@ default_args = [
     "--reward-clip", "1",
     "--epsilon-decay", "1.5e6",
     "--epsilon-decay-end", "0.05",
-    "--test-policy-steps", "2.5e5",
+    "--test-policy-steps", "1e5",
 ]
 
 # Values to tune
