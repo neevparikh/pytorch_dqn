@@ -1,13 +1,13 @@
 import numpy as np
 import random
 from collections import namedtuple
+from torch.utils.data import IterableDataset
 
-Experience = namedtuple('Experience',
-                        ['state', 'action', 'reward', 'next_state', 'done'])
 
 # Adapted from OpenAI Baselines:
 # https://github.com/openai/baselines/blob/master/baselines/deepq/replay_buffer.py
 class ReplayBuffer(object):
+
     def __init__(self, size):
         """Create Replay buffer.
 
@@ -34,16 +34,17 @@ class ReplayBuffer(object):
         self._next_idx = (self._next_idx + 1) % self._maxsize
 
     def _encode_sample(self, idxes):
-        obses_t, actions, rewards, obses_tp1, dones = [], [], [], [], []
+        states, actions, rewards, next_states, dones = [], [], [], [], []
         for i in idxes:
             data = self._storage[i]
             obs_t, action, reward, obs_tp1, done = data
-            obses_t.append(np.array(obs_t, copy=False))
+            states.append(np.array(obs_t, copy=False))
             actions.append(np.array(action, copy=False))
             rewards.append(reward)
-            obses_tp1.append(np.array(obs_tp1, copy=False))
+            next_states.append(np.array(obs_tp1, copy=False))
             dones.append(done)
-        return np.array(obses_t), np.array(actions), np.array(rewards), np.array(obses_tp1), np.array(dones)
+        return np.array(states), np.array(actions), np.array(rewards), np.array(
+            next_states), np.array(dones)
 
     def sample(self, batch_size):
         """Sample a batch of experiences.
@@ -67,5 +68,30 @@ class ReplayBuffer(object):
             done_mask[i] = 1 if executing act_batch[i] resulted in
             the end of an episode and 0 otherwise.
         """
-        idxes = [random.randint(0, len(self._storage) - 1) for _ in range(batch_size)]
+        idxes = [
+            random.randint(0,
+                           len(self._storage) - 1) for _ in range(batch_size)
+        ]
         return self._encode_sample(idxes)
+
+
+# Adapted from
+# https://towardsdatascience.com/en-lightning-reinforcement-learning-a155c217c3de
+class RBDataset(IterableDataset):
+    """
+    Iterable Dataset containing the ReplayBuffer
+    which will be updated with new experiences during training
+    Args:
+        buffer: replay buffer
+        sample_size: number of experiences to sample at a time
+    """
+
+    def __init__(self, replay_buffer_size, batch_size):
+        self.buffer = ReplayBuffer(replay_buffer_size)
+        self.batch_size = batch_size
+
+    def __iter__(self):
+        states, actions, rewards, next_states, dones = self.buffer.sample(
+            self.batch_size)
+        for i in range(len(dones)):
+            yield states, actions, rewards, next_states, dones

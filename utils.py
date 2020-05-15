@@ -13,10 +13,66 @@ def parse_args():
     # Use --help to see a pretty description of the arguments
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    # Env related
     parser.add_argument('--env',
                         help='The gym environment to train on',
                         type=str,
                         required=True)
+    parser.add_argument('--gamma',
+                        help='Gamma parameter',
+                        type=float,
+                        default=0.99,
+                        required=False)
+    parser.add_argument('--ari',
+                        help='Whether to use annotated RAM',
+                        action='store_true',
+                        required=False)
+    parser.add_argument('--num-frames',
+                        help='Number of frames to stack (CNN only)',
+                        type=int,
+                        default=4,
+                        required=False)
+    parser.add_argument('--no-atari',
+                        help='Do not use atari preprocessing',
+                        action='store_true',
+                        required=False)
+    parser.add_argument('--render',
+                        help='Render visual or not',
+                        action='store_true',
+                        required=False)
+    parser.add_argument('--render-episodes',
+                        help='Render every these many episodes',
+                        type=int,
+                        default=5,
+                        required=False)
+
+    # Training run related
+    parser.add_argument('--model-path',
+                        help='The path to the save the pytorch model',
+                        type=str,
+                        required=False)
+    parser.add_argument('--output-path',
+                        help='The output directory to store training stats',
+                        type=str,
+                        required=False)
+    parser.add_argument('--load-checkpoint-path',
+                        help='Path to checkpoint',
+                        type=str,
+                        required=False)
+    parser.add_argument('--gpu',
+                        help='Use the gpu or not',
+                        action='store_true',
+                        required=False)
+    parser.add_argument('--max-steps',
+                        help='Number of steps to run for',
+                        type=lambda x: int(float(x)),
+                        default=100000,
+                        required=False)
+    parser.add_argument('--checkpoint-steps',
+                        help='Checkpoint every so often',
+                        type=lambda x: int(float(x)),
+                        default=10000,
+                        required=False)
     parser.add_argument('--uuid',
                         help="""UUID for the experient run. 
                         `env` uses environment name,
@@ -30,127 +86,13 @@ def parse_args():
                         default='env',
                         type=str,
                         required=False)
-    parser.add_argument('--ari',
-                        help='Whether to use annotated RAM',
-                        action='store_true',
-                        required=False)
-    parser.add_argument('--model-type',
-                        help="Type of architecture",
-                        type=str,
-                        default='mlp',
-                        choices=["cnn", "mlp"],
-                        required=True)
-    parser.add_argument('--model-path',
-                        help='The path to the save the pytorch model',
-                        type=str,
-                        required=False)
-    parser.add_argument('--gamma',
-                        help='Gamma parameter',
-                        type=float,
-                        default=0.99,
-                        required=False)
-    parser.add_argument('--output-path',
-                        help='The output directory to store training stats',
-                        type=str,
-                        required=False)
-    parser.add_argument('--load-checkpoint-path',
-                        help='Path to checkpoint',
-                        type=str,
-                        required=False)
-    parser.add_argument('--no-atari',
-                        help='Do not use atari preprocessing',
-                        action='store_true',
-                        required=False)
-    parser.add_argument('--gpu',
-                        help='Use the gpu or not',
-                        action='store_true',
-                        required=False)
-    parser.add_argument('--render',
-                        help='Render visual or not',
-                        action='store_true',
-                        required=False)
-    parser.add_argument('--render-episodes',
-                        help='Render every these many episodes',
-                        type=int,
-                        default=5,
-                        required=False)
-    parser.add_argument('--num-frames',
-                        help='Number of frames to stack (CNN only)',
-                        type=int,
-                        default=4,
-                        required=False)
-    parser.add_argument('--max-steps',
-                        help='Number of steps to run for',
-                        type=lambda x: int(float(x)),
-                        default=100000,
-                        required=False)
-    parser.add_argument('--checkpoint-steps',
-                        help='Checkpoint every so often',
-                        type=lambda x: int(float(x)),
-                        default=10000,
-                        required=False)
-    parser.add_argument('--test-policy-steps',
-                        help='Policy is tested every these many steps',
-                        type=lambda x: int(float(x)),
-                        default=1000,
-                        required=False)
-    parser.add_argument('--warmup-period',
-                        help='Number of steps to act randomly and not train',
-                        type=lambda x: int(float(x)),
-                        default=50000,
-                        required=False)
-    parser.add_argument('--batchsize',
-                        help='Number of experiences sampled from replay buffer',
-                        type=int,
-                        default=256,
-                        required=False)
-    parser.add_argument('--gradient-clip',
-                        help='How much to clip the gradients by, 0 is none',
-                        type=float,
-                        default=0,
-                        required=False)
-    parser.add_argument('--reward-clip',
-                        help='How much to clip reward, clipped in [-rc, rc], 0 \
-                        results in unclipped',
-                        type=float,
-                        default=0,
-                        required=False)
-    parser.add_argument('--epsilon-decay',
-                        help='Parameter for epsilon decay',
-                        type=lambda x: int(float(x)),
-                        default=1e3,
-                        required=False)
-    parser.add_argument('--epsilon-decay-end',
-                        help='Parameter for epsilon decay end',
-                        type=float,
-                        default=0.1,
-                        required=False)
-    parser.add_argument('--replay-buffer-size',
-                        help='Max size of replay buffer',
-                        type=lambda x: int(float(x)),
-                        default=500000,
-                        required=False)
-    parser.add_argument('--lr',
-                        help='Learning rate for the optimizer',
-                        type=float,
-                        default=5e-4,
-                        required=False)
-    parser.add_argument('--target-moving-average',
-                        help='EMA parameter for target network',
-                        type=float,
-                        default=5e-3,
-                        required=False)
-    parser.add_argument('--vanilla-DQN',
-                        help='Use the vanilla dqn update instead of double DQN',
-                        action='store_true',
-                        required=False)
     parser.add_argument('--seed',
                         help='The random seed for this run',
                         type=int,
                         default=10,
                         required=False)
 
-    return parser.parse_args()
+    return parser
 
 
 def init_weights(m):

@@ -4,114 +4,191 @@ import numpy as np
 import random
 import torch
 import os
+import argparse
+
 from torch.utils.tensorboard import SummaryWriter
+from pytorch_lightning.core.lightning import LightningModule
+
 from utils import parse_args, make_ari, make_atari, append_timestamp
-from model import DQN_agent
-from replay_buffer import Experience
+from model import DQN_CNN_model, DQN_MLP_model
+from replay_buffer import RBDataset
 
-args = parse_args()
 
-# Initialize environment
-if type(args.env) == str:
-    env = gym.make(args.env)
-    test_env = gym.make(args.env)
-else:
-    env = args.env
-    test_env = args.env
+class DQN(LightningModule):
 
-# Get uuid for run
-if args.uuid == 'env':
-    uuid_tag = args.env
-elif args.uuid == 'random':
-    import uuid
-    uuid_tag = uuid.uuid4()
-else:
-    uuid_tag = args.uuid
+    def __init__(self, hparams):
+        super().__init__()
+        self.hparams = hparams
 
-# Set tag for this run
-run_tag = args.env
-run_tag += '_' + args.uuid if args.uuid != 'env' else ''
-run_tag += '_ari' if args.ari else ''
-run_tag += '_seed_' + str(args.seed)
+        # Setting cuda seeds
+        if torch.cuda.is_available():
+            torch.backends.cuda.deterministic = True
+            torch.backends.cuda.benchmark = False
 
-# Setting cuda seeds
-if torch.cuda.is_available():
-    torch.backends.cuda.deterministic = True
-    torch.backends.cuda.benchmark = False
+        # Get uuid for run
+        if self.args.uuid == 'env':
+            self.uuid_tag = self.hparams.env
+        elif self.args.uuid == 'random':
+            import uuid
+            self.uuid_tag = uuid.uuid4()
+        else:
+            self.uuid_tag = self.hparams.uuid
 
-# Setting random seed
-torch.manual_seed(args.seed)
-random.seed(args.seed)
-np.random.seed(args.seed)
-env.seed(args.seed)
-test_env.seed(args.seed)
+        # Set tag for this run
+        self.run_tag = self.hparams.env
+        self.run_tag += '_' + self.args.uuid if self.args.uuid != 'env' else ''
+        self.run_tag += '_ari' if self.args.ari else ''
+        self.run_tag += '_seed_' + str(self.args.seed)
 
-if args.model_type == 'cnn':
-    assert args.num_frames
-    if not args.no_atari:
-        print("Using atari preprocessing")
-        env = make_atari(env, args.num_frames)
-        test_env = make_atari(test_env, args.num_frames)
+        # Setting random seed
+        torch.manual_seed(self.hparams.seed)
+        random.seed(self.hparams.seed)
+        np.random.seed(self.hparams.seed)
 
-if args.ari:
-    print("Using ARI")
-    env = make_ari(env)
-    test_env = make_ari(test_env)
+        # Save path
+        if self.hparams.model_path:
+            os.makedirs(self.hparams.model_path, exist_ok=True)
 
-if type(env.action_space) != gym.spaces.Discrete:
-    raise NotImplementedError("DQN for continuous action_spaces hasn't been\
-            implemented")
+        if self.hparams.output_path:
+            os.makedirs(self.hparams.output_path, exist_ok=True)
 
-# Check if GPU can be used and was asked for
-if args.gpu and torch.cuda.is_available():
-    device = torch.device('cuda:0')
-else:
-    device = torch.device('cpu')
+        state_space = env.observation_space
+        action_space = env.action_space
+        num_actions = env.action_space.n
+        if self.hparams.model_type == "mlp":
+            self.online = DQN_MLP_model(state_space, action_space,
+                                        num_actions)
+            self.target = DQN_MLP_model(state_space, action_space,
+                                        num_actions)
+        elif self.hparams.model_type == "cnn":
+            assert num_frames
+            self.num_frames = num_frames
+            self.online = DQN_CNN_model(state_space,
+                                        action_space,
+                                        num_actions,
+                                        num_frames=num_frames)
+            self.target = DQN_CNN_model(state_space,
+                                        action_space,
+                                        num_actions,
+                                        num_frames=num_frames)
+        else:
+            raise NotImplementedError(self.hparams.model_type)
 
-# Initialize model
-agent_args = {
-    "device": device,
-    "state_space": env.observation_space,
-    "action_space": env.action_space,
-    "num_actions": env.action_space.n,
-    "target_moving_average": args.target_moving_average,
-    "gamma": args.gamma,
-    "replay_buffer_size": args.replay_buffer_size,
-    "epsilon_decay": args.epsilon_decay,
-    "epsilon_decay_end": args.epsilon_decay_end,
-    "warmup_period": args.warmup_period,
-    "double_DQN": not (args.vanilla_DQN),
-    "model_type": args.model_type,
-    "num_frames": args.num_frames,
-}
-agent = DQN_agent(**agent_args)
+        self.target.load_state_dict(self.online.state_dict())
+        self.target.eval()
 
-# Initialize optimizer
-optimizer = torch.optim.Adam(agent.online.parameters(), lr=args.lr)
+    
+    @staticmethod
+    def add_model_specific_args(parent_parser):
+        parser = argparse.ArgumentParser(
+            parents=[parent_parser],
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-# Load checkpoint
-if args.load_checkpoint_path:
-    checkpoint = torch.load(args.load_checkpoint_path)
-    agent.online.load_state_dict(checkpoint['model_state_dict'])
-    agent.target.load_state_dict(checkpoint['model_state_dict'])
-    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-    agent.online.train()
+        # Model related
+        parser.add_argument('--model-type',
+                            help="Type of architecture",
+                            type=str,
+                            default='mlp',
+                            choices=["cnn", "mlp"],
+                            required=True)
+        parser.add_argument('--vanilla-DQN',
+                            help='Use the vanilla dqn, instead of double DQN',
+                            action='store_true',
+                            required=False)
 
-# Save path
-if args.model_path:
-    os.makedirs(args.model_path, exist_ok=True)
+        # Network related
+        parser.add_argument('--batchsize',
+                            help='Number of experiences from replay buffer',
+                            type=int,
+                            default=256,
+                            required=False)
+        parser.add_argument('--lr',
+                            help='Learning rate for the optimizer',
+                            type=float,
+                            default=5e-4,
+                            required=False)
+        parser.add_argument('--target-moving-average',
+                            help='EMA parameter for target network',
+                            type=float,
+                            default=5e-3,
+                            required=False)
 
-if args.output_path:
-    os.makedirs(args.output_path, exist_ok=True)
+        # Training and model related
+        parser.add_argument('--test-policy-steps',
+                            help='Policy is tested every these many steps',
+                            type=lambda x: int(float(x)),
+                            default=1000,
+                            required=False)
+        parser.add_argument('--warmup-period',
+                            help='Number of steps to act randomly, not train',
+                            type=lambda x: int(float(x)),
+                            default=50000,
+                            required=False)
+        parser.add_argument('--gradient-clip',
+                            help='How much to clip the gradients by, 0 is none',
+                            type=float,
+                            default=0,
+                            required=False)
+        parser.add_argument('--reward-clip',
+                            help='How much to clip reward, clipped in \
+                            [-rc, rc], 0 results in unclipped',
+                            type=float,
+                            default=0,
+                            required=False)
+        parser.add_argument('--epsilon-decay',
+                            help='Parameter for epsilon decay',
+                            type=lambda x: int(float(x)),
+                            default=1e3,
+                            required=False)
+        parser.add_argument('--epsilon-decay-end',
+                            help='Parameter for epsilon decay end',
+                            type=float,
+                            default=0.1,
+                            required=False)
+        parser.add_argument('--replay-buffer-size',
+                            help='Max size of replay buffer',
+                            type=lambda x: int(float(x)),
+                            default=500000,
+                            required=False)
+        return parser
 
-# Logging via csv
-if args.output_path:
-    log_filename = f"{args.output_path}/{run_tag}.csv"
-    with open(log_filename, "w") as f:
-        f.write("episode,global_steps,cumulative_reward,\n")
+    def train_dataloader(self):
+        # Initialize environment
+        if type(self.args.env) == str:
+            self.env = gym.make(self.hparams.env)
+            self.test_env = gym.make(self.hparams.env)
+        else:
+            self.env = self.hparams.env
+            self.test_env = self.hparams.env
 
-# Logging for tensorboard
-writer = SummaryWriter(comment=run_tag)
+        self.env.seed(self.hparams.seed)
+        self.test_env.seed(self.hparams.seed)
+
+        if self.hparams.model_type == 'cnn':
+            assert self.hparams.num_frames
+            if not self.hparams.no_atari:
+                print("Using atari preprocessing")
+                env = make_atari(env, self.hparams.num_frames)
+                test_env = make_atari(test_env, self.hparams.num_frames)
+
+        if self.hparams.ari:
+            print("Using ARI")
+            env = make_ari(env)
+            test_env = make_ari(test_env)
+
+        if type(env.action_space) != gym.spaces.Discrete:
+            raise NotImplementedError("DQN for continuous action_spaces hasn't\
+                    been implemented")
+        
+        return RBDataset(self.args.replay_buffer_size, self.args.batchsize)
+        
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.online.parameters(),
+                lr=self.hparams.lr)
+        return [optimizer]
+
+
+
 
 # Episode loop
 global_steps = 0
@@ -161,7 +238,6 @@ while global_steps < args.max_steps:
         # Training loop
         minibatch = agent.replay_buffer.sample(args.batchsize)
 
-        minibatch = Experience(*minibatch)
         optimizer.zero_grad()
 
         # Get loss
