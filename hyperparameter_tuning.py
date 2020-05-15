@@ -1,16 +1,20 @@
 import sys
+import os
+import stat
+import subprocess
 from cluster_script import run as run_csgrid
 from ccv_script import run as run_ccv
-""" Tuning hyperparameters """
+
+# Tuning hyperparameters
 
 SEED_START = 0
-SEEDS_PER_RUN = 3
+SEEDS_PER_RUN = 1
 MODEL_BASE = "./saved_models"
 OUTPUT_BASE = "./reward_log"
 
 # Program args
 default_args = [
-    "--env", "SeaquestNoFrameskip-v4",
+    "--env", "RiverraidNoFrameskip-v4",
     "--model-type", "cnn",
     "--gpu",
     "--batchsize", "32",
@@ -52,9 +56,11 @@ python hyperparameter_tuning.py /path/to/env/ [ccv | csgrid]""")
             "--env", ENV_PATH,
             "--duration", "vlong",
         ]
+    elif grid_type == "no_grid":
+        pass                                           
     else:
         raise RuntimeError("""Usage:
-python hyperparameter_tuning.py /path/to/env/ [ccv | csgrid]""")
+python hyperparameter_tuning.py /path/to/env/ [ccv | csgrid | no_grid]""")
 
     for i, (arg1, value_range1) in enumerate(tuning_values.items()):
         for j, (arg2, value_range2) in enumerate(tuning_values.items()):
@@ -73,13 +79,27 @@ python hyperparameter_tuning.py /path/to/env/ [ccv | csgrid]""")
                         run_args += ["--seed", str(seed)]
                         run_args += ["--model-path", f"{MODEL_BASE}/{clean_arg_name1}_{clean_arg_name2}/{value1}_{value2}"]
                         run_args += ["--output-path", f"{OUTPUT_BASE}/{clean_arg_name1}_{clean_arg_name2}/{value1}_{value2}"]
-                        cmd = "unbuffer python train.py " + ' '.join(run_args)
-                        cluster_args += ["--command", cmd]
-                        cluster_args += ["--jobname", f"{run_tag.replace('-','_')}_{str(seed)}"]
+                        cmd = "python train.py " + ' '.join(run_args)
+                        jobname = f"{run_tag.replace('-','_')}_seed_{str(seed)}"
+                        if grid_type != "no_grid":
+                            cmd = "unbuffer " + cmd
+                            cluster_args += ["--command", cmd]
+                            cluster_args += ["--jobname", jobname]
                         if grid_type == "ccv":
                             run_ccv(custom_args=cluster_args)
                         elif grid_type == "csgrid":
                             run_csgrid(custom_args=cluster_args)
+                        elif grid_type == "no_grid":
+                            os.makedirs("./jobs/logs", exist_ok=True)
+                            os.makedirs("./jobs/scripts", exist_ok=True)
+                            print(cmd)
+                            with open(f"./jobs/scripts/{jobname}", "w+") as sc:
+                                sc.write(f"""
+#!/usr/bin/env bash
+{cmd}""")
+                            os.chmod(f"./jobs/scripts/{jobname}", stat.S_IRWXU)
+                            script_cmd = f"CUDA_VISIBLE_DEVICES={seed % 4} ./jobs/scripts/{jobname}"
+                            subprocess.Popen(script_cmd, shell=True)
                         else:
                             raise RuntimeError("""Usage:
 python hyperparameter_tuning.py /path/to/env/ [ccv | csgrid]""")
