@@ -87,7 +87,7 @@ agent_args = {
 agent = DQN_agent(**agent_args)
 
 # Initialize optimizer
-optimizer = torch.optim.Adam(agent.online.parameters(), lr=args.lr)
+optimizer = torch.optim.RMSprop(agent.online.parameters(), lr=args.lr)
 
 # Load checkpoint
 if args.load_checkpoint_path:
@@ -199,7 +199,7 @@ while global_steps < args.max_steps:
 
                 test_state = test_env.reset()
 
-                test_action = agent.online.act(state, 0)
+                test_action = agent.online.act(test_state, 0)
                 test_done = False
                 render = args.render and (episode % args.render_episodes == 0)
 
@@ -213,7 +213,7 @@ while global_steps < args.max_steps:
                         test_action)
 
                     # passing in epsilon = 0
-                    test_action = agent.online.act(state, 0)
+                    test_action = agent.online.act(test_state, 0)
 
                     # Update reward
                     cumulative_reward += test_reward
