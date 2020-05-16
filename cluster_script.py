@@ -31,6 +31,8 @@ def parse_args(custom_args=None):
                         help='A name for the job (max 10 chars)')
     parser.add_argument('--jobtype', choices=['cpu', 'gpu'], default='cpu',
                         help='Which type of job to request')
+    parser.add_argument('--mem', type=int, default=1,
+                        help='Amount of RAM to request *per node* (in GB)')
     parser.add_argument('--env', type=str, default='./env',
                         help='Path to virtualenv')
     parser.add_argument('--nresources', type=int, default=1,
@@ -141,6 +143,9 @@ source {}
         cmd += '-l {} '.format(args.duration)
         if args.nresources > 1:
             cmd += '-pe smp {} '.format(args.nresources) # Request multiple CPUs
+
+    if args.mem > 1:
+        cmd += '-l vf={}G '.format(args.mem)# Reserve extra memory  
 
     if args.host is not None:
         cmd += '-q {}.q@{}.cs.brown.edu '.format(args.duration, args.host)

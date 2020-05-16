@@ -21,7 +21,7 @@ default_args = [
 #    "--env", "QbertNoFrameskip-v4",
 #    "--env", "RiverraidNoFrameskip-v4",
     "--model-type", "cnn",
-    "--gpu",
+#    "--gpu",
     "--batchsize", "32",
     "--replay-buffer-size", "1e6",
     "--warmup-period", "5e4",
@@ -56,7 +56,8 @@ python hyperparameter_tuning.py /path/to/env/ [ccv | csgrid | no_grid]""")
         ]
     elif grid_type == "csgrid":
         cluster_args = [
-            "--jobtype", "gpu",
+            "--jobtype", "cpu",
+            "--mem", "10",
             "--env", ENV_PATH,
             "--duration", "vlong",
         ]
