@@ -87,7 +87,7 @@ agent_args = {
 agent = DQN_agent(**agent_args)
 
 # Initialize optimizer
-optimizer = torch.optim.RMSprop(agent.online.parameters(), lr=args.lr)
+optimizer = torch.optim.Adam(agent.online.parameters(), lr=args.lr)
 
 # Load checkpoint
 if args.load_checkpoint_path:
