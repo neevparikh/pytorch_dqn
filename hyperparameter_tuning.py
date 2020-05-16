@@ -14,7 +14,12 @@ OUTPUT_BASE = "./reward_log"
 
 # Program args
 default_args = [
-    "--env", "RiverraidNoFrameskip-v4",
+#    "--env", "PongNoFrameskip-v4",
+#    "--env", "SpaceInvadersNoFrameskip-v4",
+#    "--env", "SeaquestNoFrameskip-v4",
+#    "--env", "BreakoutNoFrameskip-v4",
+#    "--env", "QbertNoFrameskip-v4",
+#    "--env", "RiverraidNoFrameskip-v4",
     "--model-type", "cnn",
     "--gpu",
     "--batchsize", "32",
@@ -37,18 +42,17 @@ tuning_values = {
 if __name__ == "__main__": 
     if len(sys.argv) != 3:
         raise RuntimeError("""Usage:
-python hyperparameter_tuning.py /path/to/env/ [ccv | csgrid]""")
+python hyperparameter_tuning.py /path/to/env/ [ccv | csgrid | no_grid]""")
     ENV_PATH = sys.argv[1]
     grid_type = sys.argv[2]
     seed = SEED_START
     # Cluster args
     if grid_type == "ccv":
         cluster_args = [
-            "--cpus", "2",
-            "--gpus", "1",
+            "--cpus", "4",
             "--mem", "10",
             "--env", ENV_PATH,
-            "--duration", "slong",
+            "--duration", "vlong",
         ]
     elif grid_type == "csgrid":
         cluster_args = [
@@ -74,13 +78,13 @@ python hyperparameter_tuning.py /path/to/env/ [ccv | csgrid | no_grid]""")
                         run_args = default_args + [arg1, value1] + [arg2, value2]
                         clean_arg_name1 = arg1.strip('-').replace('-', '_')
                         clean_arg_name2 = arg2.strip('-').replace('-', '_')
-                        run_tag = f"{clean_arg_name1}_{value1}_{clean_arg_name2}_{value2}"
+                        run_tag = f"{clean_arg_name1}_{value1}_{clean_arg_name2}_{value2}" + "_cpu"
                         run_args += ["--uuid", run_tag]
                         run_args += ["--seed", str(seed)]
                         run_args += ["--model-path", f"{MODEL_BASE}/{clean_arg_name1}_{clean_arg_name2}/{value1}_{value2}"]
                         run_args += ["--output-path", f"{OUTPUT_BASE}/{clean_arg_name1}_{clean_arg_name2}/{value1}_{value2}"]
                         cmd = "python train.py " + ' '.join(run_args)
-                        jobname = f"{run_tag.replace('-','_')}_seed_{str(seed)}"
+                        jobname = f"{default_args[1].replace('-', '_')}_{run_tag.replace('-','_')}_seed_{str(seed)}"
                         if grid_type != "no_grid":
                             cmd = "unbuffer " + cmd
                             cluster_args += ["--command", cmd]
