@@ -8,7 +8,7 @@ from ccv_script import run as run_ccv
 # Tuning hyperparameters
 
 SEED_START = 0
-SEEDS_PER_RUN = 1
+SEEDS_PER_RUN = 3
 MODEL_BASE = "./saved_models"
 OUTPUT_BASE = "./reward_log"
 
@@ -58,6 +58,7 @@ python hyperparameter_tuning.py /path/to/env/ [ccv | csgrid | no_grid]""")
         cluster_args = [
             "--jobtype", "cpu",
             "--mem", "10",
+            "--nresources", "4",
             "--env", ENV_PATH,
             "--duration", "vlong",
         ]
@@ -67,15 +68,15 @@ python hyperparameter_tuning.py /path/to/env/ [ccv | csgrid | no_grid]""")
         raise RuntimeError("""Usage:
 python hyperparameter_tuning.py /path/to/env/ [ccv | csgrid | no_grid]""")
 
-    for i, (arg1, value_range1) in enumerate(tuning_values.items()):
-        for j, (arg2, value_range2) in enumerate(tuning_values.items()):
-            if j > i:
-                continue
-            if arg1 == arg2:
-                continue
-            for value1 in value_range1:
-                for value2 in value_range2:
-                    for _ in range(SEEDS_PER_RUN):
+    for _ in range(SEEDS_PER_RUN):
+        for i, (arg1, value_range1) in enumerate(tuning_values.items()):
+            for j, (arg2, value_range2) in enumerate(tuning_values.items()):
+                if j > i:
+                    continue
+                if arg1 == arg2:
+                    continue
+                for value1 in value_range1:
+                    for value2 in value_range2:
                         run_args = default_args + [arg1, value1] + [arg2, value2]
                         clean_arg_name1 = arg1.strip('-').replace('-', '_')
                         clean_arg_name2 = arg2.strip('-').replace('-', '_')
