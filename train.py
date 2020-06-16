@@ -109,6 +109,8 @@ if args.output_path:
     log_filename = f"{args.output_path}/{run_tag}.csv"
     with open(log_filename, "w") as f:
         f.write("episode,global_steps,cumulative_reward,\n")
+else:
+    log_filename = None
 
 # Logging for tensorboard
 writer = SummaryWriter(comment=run_tag)
