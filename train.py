@@ -94,9 +94,11 @@ if args.output_path:
 
 # Logging via csv
 if args.output_path:
-    log_filename = f"{args.output_path}/{run_tag}.csv"
+    base_filename = os.path.join(args.output_path, run_tag)
+    os.makedirs(base_filename, exist_ok=True)
+    log_filename = os.path.join(base_filename, 'reward.csv')
     with open(log_filename, "w") as f:
-        f.write("episode,global_steps,cumulative_reward,\n")
+        f.write("episode,steps,reward,\n")
 else:
     log_filename = None
 
@@ -171,18 +173,18 @@ while global_steps < args.max_steps:
 
         if args.model_path:
             if global_steps % args.checkpoint_steps == 0:
-                for filename in os.listdir(f"{args.model_path}/"):
-                    if "checkpoint" in filename and args.env in filename:
-                        os.remove(f"{args.model_path}/" + filename)
+                for filename in os.listdir(f"{args.model_path}"):
+                    if "checkpoint" in filename and run_tag in filename:
+                        os.remove(os.path.join(args.model_path, filename))
+                stamped = append_timestamp(os.path.join(args.model_path, 'checkpoint_' + run_tag))
+                checkpoint_filename = stamped + '_' + global_steps + '.tar'
                 torch.save(
                     {
                         "global_steps": global_steps,
                         "model_state_dict": agent.online.state_dict(),
                         "optimizer_state_dict": optimizer.state_dict(),
                         "episode": episode,
-                    },
-                    append_timestamp(f"{args.model_path}/checkpoint_{run_tag}")
-                    + f"_{global_steps}.tar")
+                    }, checkpoint_filename)
 
         # Testing policy
         if global_steps % args.test_policy_steps == 0:
@@ -211,7 +213,7 @@ while global_steps < args.max_steps:
                     # Update reward
                     cumulative_reward += test_reward
 
-                print(f"Policy_reward for test: {cumulative_reward}")
+                print("Policy_reward for test:", cumulative_reward)
 
                 # Logging
                 if not args.no_tensorboard:
@@ -219,8 +221,8 @@ while global_steps < args.max_steps:
                                       global_steps)
                 if log_filename:
                     with open(log_filename, "a") as f:
-                        f.write(
-                            f"{episode},{global_steps},{cumulative_reward},\n")
+                        f.write("{},{},{},\n".format(episode, global_steps, cumulative_reward))
+
 
     if not args.no_tensorboard:
         writer.add_scalar('training/avg_episode_loss', cumulative_loss / steps,
@@ -232,5 +234,4 @@ env.close()
 test_env.close()
 
 if args.model_path:
-    torch.save(agent.online,
-               append_timestamp(f"{args.model_path}/{run_tag}") + ".pth")
+    torch.save(agent.online, append_timestamp(os.path.join(args.model_path, run_tag)) + ".pth")
