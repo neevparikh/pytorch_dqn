@@ -9,30 +9,151 @@ from utils import parse_args, make_ari, make_atari, append_timestamp
 from model import DQN_agent
 from replay_buffer import Experience
 
+def episode_loop(env, test_env, agent, args, writer):
+    # Episode loop
+    global_steps = 0
+    steps = 1
+    episode = 0
+    start = time.time()
+    end = time.time() + 1
+
+    if args.load_checkpoint_path and checkpoint is not None:
+        global_steps = checkpoint['global_steps']
+        episode = checkpoint['episode']
+
+    while global_steps < args.max_steps:
+        print(
+            f"Episode: {episode}, steps: {global_steps}, FPS: {steps/(end - start)}"
+        )
+        start = time.time()
+        state = env.reset()
+
+        done = False
+        agent.set_epsilon(global_steps, writer)
+
+        cumulative_loss = 0
+        steps = 1
+        # Collect data from the environment
+        while not done:
+            global_steps += 1
+            action = agent.online.act(state, agent.online.epsilon)
+
+            next_state, reward, done, info = env.step(action)
+
+            steps += 1
+            if args.reward_clip:
+                clipped_reward = np.clip(reward, -args.reward_clip,
+                                        args.reward_clip)
+            else:
+                clipped_reward = reward
+            agent.replay_buffer.append(state, action, clipped_reward, next_state,
+                                    int(done))
+            state = next_state
+
+            # If not enough data, try again
+            if len(agent.replay_buffer
+                ) < args.batchsize or global_steps < args.warmup_period:
+                continue
+
+            # Training loop
+            minibatch = agent.replay_buffer.sample(args.batchsize)
+
+            minibatch = Experience(*minibatch)
+            optimizer.zero_grad()
+
+            # Get loss
+            loss = agent.loss_func(minibatch, writer, global_steps)
+
+            cumulative_loss += loss.item()
+            loss.backward()
+            if args.gradient_clip:
+                torch.nn.utils.clip_grad_norm_(agent.online.parameters(),
+                                            args.gradient_clip)
+            # Update parameters
+            optimizer.step()
+            agent.sync_networks()
+
+            if args.model_path:
+                if global_steps % args.checkpoint_steps == 0:
+                    for filename in os.listdir(f"{args.model_path}"):
+                        if "checkpoint" in filename and run_tag in filename:
+                            os.remove(os.path.join(args.model_path, filename))
+                    stamped = append_timestamp(os.path.join(args.model_path, 'checkpoint_' + run_tag))
+                    checkpoint_filename = stamped + '_' + global_steps + '.tar'
+                    torch.save(
+                        {
+                            "global_steps": global_steps,
+                            "model_state_dict": agent.online.state_dict(),
+                            "optimizer_state_dict": optimizer.state_dict(),
+                            "episode": episode,
+                        }, checkpoint_filename)
+
+            # Testing policy
+            if global_steps % args.test_policy_steps == 0:
+                with torch.no_grad():
+                    # Reset environment
+                    cumulative_reward = 0
+
+                    test_state = test_env.reset()
+
+                    test_action = agent.online.act(test_state, 0)
+                    test_done = False
+                    render = args.render and (episode % args.render_episodes == 0)
+
+                    # Test episode loop
+                    while not test_done:
+                        # Take action in env
+                        if render:
+                            test_env.render()
+
+                        test_state, test_reward, test_done, _ = test_env.step(test_action)
+
+                        # passing in epsilon = 0
+                        test_action = agent.online.act(test_state, 0)
+
+                        # Update reward
+                        cumulative_reward += test_reward
+
+                    print("Policy_reward for test:", cumulative_reward)
+
+                    # Logging
+                    if not args.no_tensorboard:
+                        writer.add_scalar('validation/policy_reward', cumulative_reward,
+                                        global_steps)
+                    if log_filename:
+                        with open(log_filename, "a") as f:
+                            f.write("{},{},{},\n".format(episode, global_steps, cumulative_reward))
+
+
+        if not args.no_tensorboard:
+            writer.add_scalar('training/avg_episode_loss', cumulative_loss / steps,
+                            episode)
+        end = time.time()
+        episode += 1
+
+
 args = parse_args()
 
 # Initialize environment
-if type(args.env) == str:
-    env = gym.make(args.env)
-    test_env = gym.make(args.env)
-else:
-    env = args.env
-    test_env = args.env
+env = gym.make(args.env)
+test_env = gym.make(args.env)
 
 # Set tag for this run
 run_tag = args.run_tag
 
-# Setting cuda seeds
-if torch.cuda.is_available():
-    torch.backends.cuda.deterministic = True
-    torch.backends.cuda.benchmark = False
+def reset_seeds(seed):
+    # Setting cuda seeds
+    if torch.cuda.is_available():
+        torch.backends.cuda.deterministic = True
+        torch.backends.cuda.benchmark = False
 
-# Setting random seed
-torch.manual_seed(args.seed)
-random.seed(args.seed)
-np.random.seed(args.seed)
-env.seed(args.seed)
-test_env.seed(args.seed)
+    # Setting random seed
+    torch.manual_seed(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    env.seed(seed)
+    test_env.seed(seed)
+reset_seeds(args.seed)
 
 if args.model_type == 'cnn':
     assert args.num_frames
@@ -108,127 +229,7 @@ if not args.no_tensorboard:
 else:
     writer = None
 
-# Episode loop
-global_steps = 0
-steps = 1
-episode = 0
-start = time.time()
-end = time.time() + 1
-
-if args.load_checkpoint_path and checkpoint is not None:
-    global_steps = checkpoint['global_steps']
-    episode = checkpoint['episode']
-
-while global_steps < args.max_steps:
-    print(
-        f"Episode: {episode}, steps: {global_steps}, FPS: {steps/(end - start)}"
-    )
-    start = time.time()
-    state = env.reset()
-
-    done = False
-    agent.set_epsilon(global_steps, writer)
-
-    cumulative_loss = 0
-    steps = 1
-    # Collect data from the environment
-    while not done:
-        global_steps += 1
-        action = agent.online.act(state, agent.online.epsilon)
-
-        next_state, reward, done, info = env.step(action)
-
-        steps += 1
-        if args.reward_clip:
-            clipped_reward = np.clip(reward, -args.reward_clip,
-                                     args.reward_clip)
-        else:
-            clipped_reward = reward
-        agent.replay_buffer.append(state, action, clipped_reward, next_state,
-                                   int(done))
-        state = next_state
-
-        # If not enough data, try again
-        if len(agent.replay_buffer
-              ) < args.batchsize or global_steps < args.warmup_period:
-            continue
-
-        # Training loop
-        minibatch = agent.replay_buffer.sample(args.batchsize)
-
-        minibatch = Experience(*minibatch)
-        optimizer.zero_grad()
-
-        # Get loss
-        loss = agent.loss_func(minibatch, writer, global_steps)
-
-        cumulative_loss += loss.item()
-        loss.backward()
-        if args.gradient_clip:
-            torch.nn.utils.clip_grad_norm_(agent.online.parameters(),
-                                           args.gradient_clip)
-        # Update parameters
-        optimizer.step()
-        agent.sync_networks()
-
-        if args.model_path:
-            if global_steps % args.checkpoint_steps == 0:
-                for filename in os.listdir(f"{args.model_path}"):
-                    if "checkpoint" in filename and run_tag in filename:
-                        os.remove(os.path.join(args.model_path, filename))
-                stamped = append_timestamp(os.path.join(args.model_path, 'checkpoint_' + run_tag))
-                checkpoint_filename = stamped + '_' + global_steps + '.tar'
-                torch.save(
-                    {
-                        "global_steps": global_steps,
-                        "model_state_dict": agent.online.state_dict(),
-                        "optimizer_state_dict": optimizer.state_dict(),
-                        "episode": episode,
-                    }, checkpoint_filename)
-
-        # Testing policy
-        if global_steps % args.test_policy_steps == 0:
-            with torch.no_grad():
-                # Reset environment
-                cumulative_reward = 0
-
-                test_state = test_env.reset()
-
-                test_action = agent.online.act(test_state, 0)
-                test_done = False
-                render = args.render and (episode % args.render_episodes == 0)
-
-                # Test episode loop
-                while not test_done:
-                    # Take action in env
-                    if render:
-                        test_env.render()
-
-                    test_state, test_reward, test_done, _ = test_env.step(
-                        test_action)
-
-                    # passing in epsilon = 0
-                    test_action = agent.online.act(test_state, 0)
-
-                    # Update reward
-                    cumulative_reward += test_reward
-
-                print("Policy_reward for test:", cumulative_reward)
-
-                # Logging
-                if not args.no_tensorboard:
-                    writer.add_scalar('validation/policy_reward', cumulative_reward,
-                                      global_steps)
-                if log_filename:
-                    with open(log_filename, "a") as f:
-                        f.write("{},{},{},\n".format(episode, global_steps, cumulative_reward))
-
-
-    if not args.no_tensorboard:
-        writer.add_scalar('training/avg_episode_loss', cumulative_loss / steps,
-                          episode)
-    end = time.time()
-    episode += 1
+episode_loop(env, test_env, agent, args)
 
 env.close()
 test_env.close()

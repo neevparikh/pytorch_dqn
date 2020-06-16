@@ -137,3 +137,4 @@ profile.out
 *.tar 
 *.pth
 .idea
+.vscode/
