@@ -86,11 +86,12 @@ def episode_loop(env, test_env, agent, args, writer):
                 clipped_reward = reward
 
             # Store in replay buffer
-            agent.replay_buffer.append(state, action, clipped_reward, next_state, int(done))
+            if len(agent.replay_buffer) <= SIZE:
+                agent.replay_buffer.append(state, action, clipped_reward, next_state, int(done))
             state = next_state
 
             # If not enough data, try again
-            if len(agent.replay_buffer) < args.batchsize or global_steps < args.warmup_period:
+            if len(agent.replay_buffer) <= args.batchsize or global_steps < args.warmup_period:
                 continue
 
             # Training loop
@@ -172,10 +173,11 @@ if not args.no_tensorboard:
 else:
     writer = None
 
+SIZE = args.batchsize
+__import__('pdb').set_trace()
 episode_loop(env, test_env, agent, args, writer)
 
 env.close()
 test_env.close()
-
 if args.model_path:
     torch.save(agent.online, append_timestamp(os.path.join(args.model_path, args.run_tag)) + ".pth")

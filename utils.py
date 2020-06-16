@@ -1,9 +1,13 @@
+import argparse
+from datetime import datetime
+import random
+
 from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
 import numpy as np
 import torch
-import argparse
-from datetime import datetime
+import gym
+
 from gym_wrappers import AtariPreprocess, MaxAndSkipEnv, FrameStack, ResetARI
 from atariari.benchmark.wrapper import AtariARIWrapper
 
@@ -114,7 +118,7 @@ def parse_args():
     parser.add_argument('--epsilon-decay-end',
                         help='Parameter for epsilon decay end',
                         type=float,
-                        default=0.1,
+                        default=0.05,
                         required=False)
     parser.add_argument('--replay-buffer-size',
                         help='Max size of replay buffer',
@@ -141,7 +145,7 @@ def parse_args():
                         default=10,
                         required=False)
     parser.add_argument('--run-tag',
-                        help="RunTag for the experient run.",
+                        help="Run tag for the experient run.",
                         type=str,
                         required=True)
 
@@ -152,13 +156,6 @@ def init_weights(m):
     if type(m) == torch.nn.Linear:
         torch.nn.init.uniform_(m.weight, -0.1, 0.1)
         torch.nn.init.uniform_(m.bias, -1, 1)
-
-
-def sync_networks(target, online, alpha):
-    for online_param, target_param in zip(online.parameters(),
-                                          target.parameters()):
-        target_param.data.copy_(alpha * online_param.data +
-                                (1 - alpha) * target_param.data)
 
 
 # Adapted from pytorch tutorials:
@@ -222,6 +219,16 @@ def plot_grad_flow(named_parameters):
     ], ['max-gradient', 'mean-gradient', 'zero-gradient'])
     return plt.gcf()
 
+def reset_seeds(seed):
+    # Setting cuda seeds
+    if torch.cuda.is_available():
+        torch.backends.cuda.deterministic = True
+        torch.backends.cuda.benchmark = False
+
+    # Setting random seed
+    torch.manual_seed(seed)
+    random.seed(seed)
+    np.random.seed(seed)
 
 def append_timestamp(string, fmt_string=None):
     now = datetime.now()
@@ -229,3 +236,27 @@ def append_timestamp(string, fmt_string=None):
         return string + "_" + now.strftime(fmt_string)
     else:
         return string + "_" + str(now).replace(" ", "_")
+
+def initialize_environment(args):
+    # Initialize environment
+    env = gym.make(args.env)
+    test_env = gym.make(args.env)
+    if args.model_type == 'cnn':
+        assert args.num_frames
+        if not args.no_atari:
+            print("Using atari preprocessing")
+            env = make_atari(env, args.num_frames)
+            test_env = make_atari(test_env, args.num_frames)
+
+    if args.ari:
+        print("Using ARI")
+        env = make_ari(env)
+        test_env = make_ari(test_env)
+
+    if type(env.action_space) != gym.spaces.Discrete:
+        raise NotImplementedError("DQN for continuous action_spaces hasn't been\
+                implemented")
+    env.seed(args.seed)
+    test_env.seed(args.seed + 1000)
+    return env, test_env
+

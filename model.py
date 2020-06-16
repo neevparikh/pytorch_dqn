@@ -2,7 +2,7 @@ import torch
 import numpy as np
 import random
 
-from utils import sync_networks, conv2d_size_out
+from utils import conv2d_size_out, append_timestamp
 from replay_buffer import ReplayBuffer, Experience
 
 
@@ -58,7 +58,8 @@ class DQN_MLP_model(DQN_Base_model):
         super(DQN_MLP_model, self).__init__(device, state_space, action_space,
                                             num_actions)
         # architecture
-        self.layer_sizes = [(768, 768), (768, 768), (768, 512)]
+        # self.layer_sizes = [(768, 768), (768, 768), (768, 512)]
+        self.layer_sizes = [(32, 32)]
 
         self.build_model()
 
@@ -161,6 +162,7 @@ class DQN_agent:
                  state_space,
                  action_space,
                  num_actions,
+                 lr,
                  target_moving_average,
                  gamma,
                  replay_buffer_size,
@@ -212,47 +214,66 @@ class DQN_agent:
         self.double_DQN = double_DQN
         self.state_space = state_space
 
+        # Initialize optimizer
+        self.optimizer = torch.optim.Adam(self.online.parameters(), lr=lr)
+
     def loss_func(self, minibatch, writer=None, writer_step=None):
         # Make tensors
         state_tensor = torch.as_tensor(minibatch.state.astype(np.float32)).to(self.device)
         next_state_tensor = torch.as_tensor(minibatch.next_state.astype(np.float32)).to(self.device)
-        action_tensor = torch.FloatTensor(minibatch.action).to(
-            self.device, dtype=torch.float32)
-        reward_tensor = torch.FloatTensor(minibatch.reward).to(
-            self.device, dtype=torch.float32)
-        done_tensor = torch.ByteTensor(minibatch.done).to(self.device,
-                                                          dtype=torch.uint8)
-
+        action_tensor = torch.FloatTensor(minibatch.action).to(self.device, dtype=torch.float32)
+        reward_tensor = torch.FloatTensor(minibatch.reward).to(self.device, dtype=torch.float32)
+        done_tensor = torch.ByteTensor(minibatch.done).to(self.device, dtype=torch.uint8)
         # Get q value predictions
         q_pred_batch = self.online(state_tensor).gather(
             dim=1, index=action_tensor.long().unsqueeze(1)).squeeze(1)
         with torch.no_grad():
             if self.double_DQN:
-                selected_actions = self.online.argmax_over_actions(
-                    next_state_tensor)
-                q_target = self.target(next_state_tensor).gather(
-                    dim=1,
+                selected_actions = self.online.argmax_over_actions(next_state_tensor)
+                q_target = self.target(next_state_tensor).gather(dim=1,
                     index=selected_actions.long().unsqueeze(1)).squeeze(1)
             else:
-                q_target = self.target.max_over_actions(
-                    next_state_tensor.detach()).values
+                q_target = self.target.max_over_actions(next_state_tensor.detach()).values
 
-        q_label_batch = reward_tensor + (self.gamma) * (1 -
-                                                        done_tensor) * q_target
+        q_label_batch = reward_tensor + (self.gamma) * (1 - done_tensor) * q_target
         q_label_batch = q_label_batch.detach()
+
+        loss = torch.nn.functional.smooth_l1_loss(q_label_batch, q_pred_batch)
 
         # Logging
         if writer:
+            writer.add_scalar('training/step_loss', loss.mean(),
+                              writer_step)
             writer.add_scalar('training/batch_q_label', q_label_batch.mean(),
                               writer_step)
             writer.add_scalar('training/batch_q_pred', q_pred_batch.mean(),
                               writer_step)
             writer.add_scalar('training/batch_reward', reward_tensor.mean(),
                               writer_step)
-        return torch.nn.functional.smooth_l1_loss(q_label_batch, q_pred_batch)
+        return loss
+
+    def train_batch(self, batchsize, global_steps, writer, gradient_clip=None):
+        minibatch = self.replay_buffer.sample(batchsize)
+        minibatch = Experience(*minibatch)
+
+        self.optimizer.zero_grad()
+
+        # Get loss
+        loss = self.loss_func(minibatch, writer, global_steps)
+        loss.backward()
+
+        if gradient_clip:
+            torch.nn.utils.clip_grad_norm_(self.online.parameters(), gradient_clip)
+
+        # Update parameters
+        self.optimizer.step()
+        self.sync_networks()
+        return loss
 
     def sync_networks(self):
-        sync_networks(self.target, self.online, self.target_moving_average)
+        for online_param, target_param in zip(self.online.parameters(), self.target.parameters()):
+            target_param.data.copy_(self.target_moving_average * online_param.data +
+                                    (1 - self.target_moving_average) * target_param.data)
 
     def set_epsilon(self, global_steps, writer=None):
         if global_steps < self.warmup_period:
@@ -268,3 +289,26 @@ class DQN_agent:
         if writer:
             writer.add_scalar('training/epsilon', self.online.epsilon,
                               global_steps)
+
+    def load_checkpoint(self, checkpoint_path):
+        checkpoint = torch.load(checkpoint_path)
+        self.online.load_state_dict(checkpoint['model_state_dict'])
+        self.target.load_state_dict(checkpoint['model_state_dict'])
+        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        self.online.train()
+        return checkpoint
+
+    def save_checkpoint(self, episode, global_steps, args):
+        for filename in os.listdir(f"{args.model_path}"):
+            if "checkpoint" in filename and args.run_tag in filename:
+                os.remove(os.path.join(args.model_path, filename))
+        stamped = append_timestamp(os.path.join(args.model_path, 'checkpoint_' + args.run_tag))
+        checkpoint_filename = stamped + '_' + global_steps + '.tar'
+        torch.save(
+            {
+                "global_steps": global_steps,
+                "model_state_dict": self.online.state_dict(),
+                "optimizer_state_dict": self.optimizer.state_dict(),
+                "episode": episode,
+            }, checkpoint_filename)
+
