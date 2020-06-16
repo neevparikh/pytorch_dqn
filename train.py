@@ -19,20 +19,8 @@ else:
     env = args.env
     test_env = args.env
 
-# Get uuid for run
-if args.uuid == 'env':
-    uuid_tag = args.env
-elif args.uuid == 'random':
-    import uuid
-    uuid_tag = uuid.uuid4()
-else:
-    uuid_tag = args.uuid
-
 # Set tag for this run
-run_tag = args.env
-run_tag += '_' + args.uuid if args.uuid != 'env' else ''
-run_tag += '_ari' if args.ari else ''
-run_tag += '_seed_' + str(args.seed)
+run_tag = args.run_tag
 
 # Setting cuda seeds
 if torch.cuda.is_available():
@@ -113,7 +101,10 @@ else:
     log_filename = None
 
 # Logging for tensorboard
-writer = SummaryWriter(comment=run_tag)
+if not args.no_tensorboard:
+    writer = SummaryWriter(comment=run_tag)
+else:
+    writer = None
 
 # Episode loop
 global_steps = 0
@@ -223,15 +214,17 @@ while global_steps < args.max_steps:
                 print(f"Policy_reward for test: {cumulative_reward}")
 
                 # Logging
-                writer.add_scalar('validation/policy_reward', cumulative_reward,
-                                  global_steps)
+                if not args.no_tensorboard:
+                    writer.add_scalar('validation/policy_reward', cumulative_reward,
+                                      global_steps)
                 if log_filename:
                     with open(log_filename, "a") as f:
                         f.write(
                             f"{episode},{global_steps},{cumulative_reward},\n")
 
-    writer.add_scalar('training/avg_episode_loss', cumulative_loss / steps,
-                      episode)
+    if not args.no_tensorboard:
+        writer.add_scalar('training/avg_episode_loss', cumulative_loss / steps,
+                          episode)
     end = time.time()
     episode += 1
 

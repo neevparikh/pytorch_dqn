@@ -17,19 +17,6 @@ def parse_args():
                         help='The gym environment to train on',
                         type=str,
                         required=True)
-    parser.add_argument('--uuid',
-                        help="""UUID for the experient run. 
-                        `env` uses environment name,
-                        `random` uses a random UUID 
-                            (i.e. 2b25d648-ce34-4523-b409-35247d481e32),
-                        anything else is custom, example:
-                        PongNoFrameskip_ari_5 (uuid = env)
-                        PongNoFrameskip_64f9c4c9-bee5-44a6-9a61-d70267d9d623_ari_5 (uuid = random)
-                        PongNoFrameskip_lr_1e-5_ari_5 (uuid = lr_1e-5 (custom))
-                        """,
-                        default='env',
-                        type=str,
-                        required=False)
     parser.add_argument('--ari',
                         help='Whether to use annotated RAM',
                         action='store_true',
@@ -59,6 +46,10 @@ def parse_args():
                         required=False)
     parser.add_argument('--no-atari',
                         help='Do not use atari preprocessing',
+                        action='store_true',
+                        required=False)
+    parser.add_argument('--no-tensorboard',
+                        help='Do not use Tensorboard',
                         action='store_true',
                         required=False)
     parser.add_argument('--gpu',
@@ -149,6 +140,10 @@ def parse_args():
                         type=int,
                         default=10,
                         required=False)
+    parser.add_argument('--run-tag',
+                        help="RunTag for the experient run.",
+                        type=str,
+                        required=True)
 
     return parser.parse_args()
 
