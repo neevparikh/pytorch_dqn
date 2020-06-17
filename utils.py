@@ -15,8 +15,7 @@ from atariari.benchmark.wrapper import AtariARIWrapper
 def parse_args():
     # Parse input arguments
     # Use --help to see a pretty description of the arguments
-    parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--env',
                         help='The gym environment to train on',
                         type=str,
@@ -77,12 +76,12 @@ def parse_args():
     parser.add_argument('--max-steps',
                         help='Number of steps to run for',
                         type=lambda x: int(float(x)),
-                        default=100000,
+                        default=40000,
                         required=False)
     parser.add_argument('--checkpoint-steps',
                         help='Checkpoint every so often',
                         type=lambda x: int(float(x)),
-                        default=10000,
+                        default=20000,
                         required=False)
     parser.add_argument('--test-policy-steps',
                         help='Policy is tested every these many steps',
@@ -92,12 +91,12 @@ def parse_args():
     parser.add_argument('--warmup-period',
                         help='Number of steps to act randomly and not train',
                         type=lambda x: int(float(x)),
-                        default=50000,
+                        default=2000,
                         required=False)
     parser.add_argument('--batchsize',
                         help='Number of experiences sampled from replay buffer',
                         type=int,
-                        default=256,
+                        default=32,
                         required=False)
     parser.add_argument('--gradient-clip',
                         help='How much to clip the gradients by, 0 is none',
@@ -105,15 +104,14 @@ def parse_args():
                         default=0,
                         required=False)
     parser.add_argument('--reward-clip',
-                        help='How much to clip reward, clipped in [-rc, rc], 0 \
-                        results in unclipped',
+                        help='How much to clip reward, clipped in [-rc, rc], 0 is unclipped',
                         type=float,
                         default=0,
                         required=False)
     parser.add_argument('--epsilon-decay',
                         help='Parameter for epsilon decay',
                         type=lambda x: int(float(x)),
-                        default=1e3,
+                        default=5000,
                         required=False)
     parser.add_argument('--epsilon-decay-end',
                         help='Parameter for epsilon decay end',
@@ -123,17 +121,17 @@ def parse_args():
     parser.add_argument('--replay-buffer-size',
                         help='Max size of replay buffer',
                         type=lambda x: int(float(x)),
-                        default=500000,
+                        default=50000,
                         required=False)
     parser.add_argument('--lr',
                         help='Learning rate for the optimizer',
                         type=float,
-                        default=5e-4,
+                        default=0.001,
                         required=False)
     parser.add_argument('--target-moving-average',
                         help='EMA parameter for target network',
                         type=float,
-                        default=5e-3,
+                        default=0.01,
                         required=False)
     parser.add_argument('--vanilla-DQN',
                         help='Use the vanilla dqn update instead of double DQN',
