@@ -58,8 +58,8 @@ class DQN_MLP_model(DQN_Base_model):
         super(DQN_MLP_model, self).__init__(device, state_space, action_space,
                                             num_actions)
         # architecture
-        # self.layer_sizes = [(768, 768), (768, 768), (768, 512)]
-        self.layer_sizes = [(32, 32)]
+        self.layer_sizes = [(768, 768), (768, 768), (768, 512)]
+        # self.layer_sizes = [(32, 32)]
 
         self.build_model()
 
