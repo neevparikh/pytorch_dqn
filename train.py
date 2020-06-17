@@ -45,7 +45,7 @@ def test_policy(test_env, agent, episode, global_steps, writer, log_filename, ar
             writer.add_scalar('validation/policy_reward', cumulative_reward, global_steps)
         if log_filename:
             with open(log_filename, "a") as f:
-                f.write("{},{},{},\n".format(episode, global_steps, cumulative_reward))
+                f.write("{},{},{},".format(episode, global_steps, cumulative_reward))
 
 
 def episode_loop(env, test_env, agent, args, writer):
@@ -54,6 +54,8 @@ def episode_loop(env, test_env, agent, args, writer):
     steps = 1
     episode = 0
     start = time.time()
+    t_zero = time.time()
+                 
     end = time.time() + 1
 
     if args.load_checkpoint_path:
@@ -108,14 +110,13 @@ def episode_loop(env, test_env, agent, args, writer):
             # Testing policy
             if global_steps % args.test_policy_steps == 0:
                 test_policy(test_env, agent, episode, global_steps, writer, log_filename, args)
+                if log_filename:
+                    with open(log_filename, "a") as f:
+                        f.write("{:.2f}\n".format(time.time() - t_zero))
 
         if not args.no_tensorboard:
             writer.add_scalar('training/avg_episode_loss', cumulative_loss / steps, episode)
         end = time.time()
-
-        if log_filename:
-            with open(log_filename, "a") as f:
-                f.write(end)
 
         episode += 1
 
