@@ -51,15 +51,19 @@ class DQN_Base_model(torch.nn.Module):
 class DQN_MLP_model(DQN_Base_model):
     """Docstring for DQN MLP model """
 
-    def __init__(self, device, state_space, action_space, num_actions):
+    def __init__(self, device, state_space, action_space, num_actions, model_shape):
         """Defining DQN MLP model
         """
         # initialize all parameters
         super(DQN_MLP_model, self).__init__(device, state_space, action_space,
                                             num_actions)
         # architecture
-        self.layer_sizes = [(768, 768), (768, 768), (768, 512)]
-        # self.layer_sizes = [(32, 32)]
+        if model_shape == 'small':
+            self.layer_sizes = [(64, 64), (64, 64)]
+        elif model_shape == 'medium':
+            self.layer_sizes = [(256, 256), (256, 256), (256, 256)]
+        elif model_shape == 'large':
+            self.layer_sizes = [(1024, 1024), (1024, 1024), (1024, 1024), (1024, 1024)]
 
         self.build_model()
 
@@ -171,16 +175,15 @@ class DQN_agent:
                  warmup_period,
                  double_DQN,
                  model_type="mlp",
+                 model_shape=None,
                  num_frames=None):
         """Defining DQN agent
         """
         self.replay_buffer = ReplayBuffer(replay_buffer_size)
 
         if model_type == "mlp":
-            self.online = DQN_MLP_model(device, state_space, action_space,
-                                        num_actions)
-            self.target = DQN_MLP_model(device, state_space, action_space,
-                                        num_actions)
+            self.online = DQN_MLP_model(device, state_space, action_space, num_actions, model_shape)
+            self.target = DQN_MLP_model(device, state_space, action_space, num_actions, model_shape)
         elif model_type == "cnn":
             assert num_frames
             self.num_frames = num_frames

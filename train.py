@@ -110,6 +110,11 @@ def episode_loop(env, test_env, agent, args, writer):
             writer.add_scalar('training/avg_episode_loss', cumulative_loss / steps,
                             episode)
         end = time.time()
+
+        if log_filename:
+            with open(log_filename, "a") as f:
+                f.write(end)
+
         episode += 1
 
 
@@ -142,6 +147,7 @@ agent_args = {
     "warmup_period": args.warmup_period,
     "double_DQN": not (args.vanilla_DQN),
     "model_type": args.model_type,
+    "model_shape": args.model_shape,
     "num_frames": args.num_frames,
 }
 agent = DQN_agent(**agent_args)
@@ -159,7 +165,7 @@ if args.output_path:
     os.makedirs(base_filename, exist_ok=True)
     log_filename = os.path.join(base_filename, 'reward.csv')
     with open(log_filename, "w") as f:
-        f.write("episode,steps,reward,\n")
+        f.write("episode,steps,reward,runtime\n")
     with open(os.path.join(base_filename, 'params.json'), 'w') as fp:
         param_dict = vars(args).copy()
         del param_dict['output_path']

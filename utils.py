@@ -28,16 +28,22 @@ def parse_args():
                         help="Type of architecture",
                         type=str,
                         default='mlp',
-                        choices=["cnn", "mlp"],
+                        choices=['cnn', 'mlp'],
                         required=True)
-    parser.add_argument('--model-path',
-                        help='The path to the save the pytorch model',
+    parser.add_argument('--model-shape',
+                        help="Shape of architecture (mlp only)",
                         type=str,
-                        required=False)
+                        default='medium',
+                        choices=['small', 'medium', 'large'],
+                        required=True)
     parser.add_argument('--gamma',
                         help='Gamma parameter',
                         type=float,
                         default=0.99,
+                        required=False)
+    parser.add_argument('--model-path',
+                        help='The path to the save the pytorch model',
+                        type=str,
                         required=False)
     parser.add_argument('--output-path',
                         help='The output directory to store training stats',
