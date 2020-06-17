@@ -130,7 +130,7 @@ dmypy.json
 
 # Custom 
 runs/
-diagnostics
+.onager/
 saved_models/
 reward_log/
 profile.out
