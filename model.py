@@ -6,7 +6,6 @@ from utils import conv2d_size_out, append_timestamp
 from replay_buffer import ReplayBuffer, Experience
 
 
-
 class DQN_Base_model(torch.nn.Module):
     """Docstring for DQN MLP model """
 
@@ -55,8 +54,7 @@ class DQN_MLP_model(DQN_Base_model):
         """Defining DQN MLP model
         """
         # initialize all parameters
-        super(DQN_MLP_model, self).__init__(device, state_space, action_space,
-                                            num_actions)
+        super(DQN_MLP_model, self).__init__(device, state_space, action_space, num_actions)
         # architecture
         if model_shape == 'small':
             self.layer_sizes = [(64, 64), (64, 64)]
@@ -71,20 +69,17 @@ class DQN_MLP_model(DQN_Base_model):
         # output should be in batchsize x num_actions
         # First layer takes in states
         layers = [
-            torch.nn.Linear(self.state_space.shape[0], self.layer_sizes[0][0]),
-            torch.nn.ReLU()
+            torch.nn.Linear(self.state_space.shape[0], self.layer_sizes[0][0]), torch.nn.ReLU()
         ]
         for size in self.layer_sizes:
             layer = [torch.nn.Linear(size[0], size[1]), torch.nn.ReLU()]
             layers.extend(layer)
 
-        layers.append(torch.nn.Linear(self.layer_sizes[-1][1],
-                                      self.num_actions))
+        layers.append(torch.nn.Linear(self.layer_sizes[-1][1], self.num_actions))
 
         self.body = torch.nn.Sequential(*layers)
 
-        trainable_parameters = sum(
-            p.numel() for p in self.parameters() if p.requires_grad)
+        trainable_parameters = sum(p.numel() for p in self.parameters() if p.requires_grad)
         print(f"Number of trainable parameters: {trainable_parameters}")
 
     def forward(self, state):
@@ -106,8 +101,7 @@ class DQN_CNN_model(DQN_Base_model):
         """Defining DQN CNN model
         """
         # initialize all parameters
-        super(DQN_CNN_model, self).__init__(device, state_space, action_space,
-                                            num_actions)
+        super(DQN_CNN_model, self).__init__(device, state_space, action_space, num_actions)
         self.num_frames = num_frames
         self.final_dense_layer = final_dense_layer
         self.input_shape = input_shape
@@ -131,14 +125,12 @@ class DQN_CNN_model(DQN_Base_model):
         final_size = conv2d_size_out(final_size, (3, 3), 1)
 
         self.head = torch.nn.Sequential(*[
-            torch.nn.Linear(final_size[0] * final_size[1] *
-                            64, self.final_dense_layer),
+            torch.nn.Linear(final_size[0] * final_size[1] * 64, self.final_dense_layer),
             torch.nn.ReLU(),
             torch.nn.Linear(self.final_dense_layer, self.num_actions)
         ])
 
-        trainable_parameters = sum(
-            p.numel() for p in self.parameters() if p.requires_grad)
+        trainable_parameters = sum(p.numel() for p in self.parameters() if p.requires_grad)
         print(f"Number of trainable parameters: {trainable_parameters}")
 
     def forward(self, state):
@@ -233,8 +225,8 @@ class DQN_agent:
         with torch.no_grad():
             if self.double_DQN:
                 selected_actions = self.online.argmax_over_actions(next_state_tensor)
-                q_target = self.target(next_state_tensor).gather(dim=1,
-                    index=selected_actions.long().unsqueeze(1)).squeeze(1)
+                q_target = self.target(next_state_tensor).gather(
+                    dim=1, index=selected_actions.long().unsqueeze(1)).squeeze(1)
             else:
                 q_target = self.target.max_over_actions(next_state_tensor.detach()).values
 
@@ -245,14 +237,10 @@ class DQN_agent:
 
         # Logging
         if writer:
-            writer.add_scalar('training/step_loss', loss.mean(),
-                              writer_step)
-            writer.add_scalar('training/batch_q_label', q_label_batch.mean(),
-                              writer_step)
-            writer.add_scalar('training/batch_q_pred', q_pred_batch.mean(),
-                              writer_step)
-            writer.add_scalar('training/batch_reward', reward_tensor.mean(),
-                              writer_step)
+            writer.add_scalar('training/step_loss', loss.mean(), writer_step)
+            writer.add_scalar('training/batch_q_label', q_label_batch.mean(), writer_step)
+            writer.add_scalar('training/batch_q_pred', q_pred_batch.mean(), writer_step)
+            writer.add_scalar('training/batch_reward', reward_tensor.mean(), writer_step)
         return loss
 
     def train_batch(self, batchsize, global_steps, writer, gradient_clip=None):
@@ -283,15 +271,12 @@ class DQN_agent:
             self.online.epsilon = 1
             self.target.epsilon = 1
         else:
-            self.online.epsilon = max(
-                self.epsilon_decay_end,
-                1 - (global_steps - self.warmup_period) / self.epsilon_decay)
-            self.target.epsilon = max(
-                self.epsilon_decay_end,
-                1 - (global_steps - self.warmup_period) / self.epsilon_decay)
+            self.online.epsilon = max(self.epsilon_decay_end,
+                                      1 - (global_steps - self.warmup_period) / self.epsilon_decay)
+            self.target.epsilon = max(self.epsilon_decay_end,
+                                      1 - (global_steps - self.warmup_period) / self.epsilon_decay)
         if writer:
-            writer.add_scalar('training/epsilon', self.online.epsilon,
-                              global_steps)
+            writer.add_scalar('training/epsilon', self.online.epsilon, global_steps)
 
     def load_checkpoint(self, checkpoint_path):
         checkpoint = torch.load(checkpoint_path)
@@ -313,5 +298,5 @@ class DQN_agent:
                 "model_state_dict": self.online.state_dict(),
                 "optimizer_state_dict": self.optimizer.state_dict(),
                 "episode": episode,
-            }, checkpoint_filename)
-
+            },
+            checkpoint_filename)

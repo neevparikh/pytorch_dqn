@@ -12,6 +12,7 @@ from utils import parse_args, make_ari, make_atari, append_timestamp, reset_seed
         initialize_environment
 from model import DQN_agent
 
+
 def test_policy(test_env, agent, episode, global_steps, writer, log_filename, args):
     with torch.no_grad():
         # Reset environment
@@ -41,11 +42,11 @@ def test_policy(test_env, agent, episode, global_steps, writer, log_filename, ar
 
         # Logging
         if not args.no_tensorboard:
-            writer.add_scalar('validation/policy_reward', cumulative_reward,
-                            global_steps)
+            writer.add_scalar('validation/policy_reward', cumulative_reward, global_steps)
         if log_filename:
             with open(log_filename, "a") as f:
                 f.write("{},{},{},\n".format(episode, global_steps, cumulative_reward))
+
 
 def episode_loop(env, test_env, agent, args, writer):
     # Episode loop
@@ -62,9 +63,11 @@ def episode_loop(env, test_env, agent, args, writer):
 
     score = 0
     while global_steps < args.max_steps:
-        print(
-            f"Episode: {episode}, steps: {global_steps}, ep_score: {score}, FPS: {steps/(end - start)}"
-        )
+        info_str = "episode: {}, ".format(episode)
+        info_str += "steps: {}, ".format(global_steps)
+        info_str += "ep_score: {}, ".format(score)
+        info_str += "FPS: {}".format(steps/(end - start))
+        print(info_str)
         start = time.time()
 
         state = env.reset()
@@ -107,8 +110,7 @@ def episode_loop(env, test_env, agent, args, writer):
                 test_policy(test_env, agent, episode, global_steps, writer, log_filename, args)
 
         if not args.no_tensorboard:
-            writer.add_scalar('training/avg_episode_loss', cumulative_loss / steps,
-                            episode)
+            writer.add_scalar('training/avg_episode_loss', cumulative_loss / steps, episode)
         end = time.time()
 
         if log_filename:
