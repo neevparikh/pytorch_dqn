@@ -60,9 +60,10 @@ def episode_loop(env, test_env, agent, args, writer):
         global_steps = checkpoint['global_steps']
         episode = checkpoint['episode']
 
+    score = 0
     while global_steps < args.max_steps:
         print(
-            f"Episode: {episode}, steps: {global_steps}, FPS: {steps/(end - start)}"
+            f"Episode: {episode}, steps: {global_steps}, ep_score: {score}, FPS: {steps/(end - start)}"
         )
         start = time.time()
 
@@ -72,13 +73,14 @@ def episode_loop(env, test_env, agent, args, writer):
 
         cumulative_loss = 0
         steps = 1
+        score = 0
         # Collect data from the environment
         while not done:
             global_steps += 1
             action = agent.online.act(state, agent.online.epsilon)
 
             next_state, reward, done, info = env.step(action)
-
+            score += reward
             steps += 1
             if args.reward_clip:
                 clipped_reward = np.clip(reward, -args.reward_clip, args.reward_clip)
