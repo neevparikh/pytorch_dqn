@@ -36,7 +36,7 @@ def parse_args():
                         help="Shape of architecture (mlp only)",
                         type=str,
                         default='medium',
-                        choices=['small', 'medium', 'large'],
+                        choices=['small', 'medium', 'large', 'giant'],
                         required=True)
     parser.add_argument('--gamma',
                         help='Gamma parameter',

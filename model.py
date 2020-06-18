@@ -62,6 +62,8 @@ class DQN_MLP_model(DQN_Base_model):
             self.layer_sizes = [(256, 256), (256, 256), (256, 256)]
         elif model_shape == 'large':
             self.layer_sizes = [(1024, 1024), (1024, 1024), (1024, 1024), (1024, 1024)]
+        elif model_shape == 'giant':
+            self.layer_sizes = [(2048, 2048), (2048, 2048), (2048, 2048), (2048, 2048), (2048, 2048), (2048, 2048)]
 
         self.build_model()
 
