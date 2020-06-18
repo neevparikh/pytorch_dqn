@@ -253,6 +253,8 @@ def make_visual(env):
 def initialize_environment(args):
     # Initialize environment
     if args.env == "VisualCartPole-v0":
+        from pyvirtualdisplay import Display
+        display = Display(visible=False, backend='xvfb').start()
         env = gym.make("CartPole-v0")
         test_env = gym.make("CartPole-v0")
         env.reset()
@@ -260,6 +262,8 @@ def initialize_environment(args):
         env = make_visual(env)
         test_env = make_visual(env)
     elif args.env == "VisualCartPole-v1":
+        from pyvirtualdisplay import Display
+        display = Display(visible=False, backend='xvfb').start()
         env = gym.make("CartPole-v1")
         test_env = gym.make("CartPole-v1")
         env.reset()
