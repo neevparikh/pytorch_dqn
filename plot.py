@@ -44,12 +44,12 @@ def collate_results(results_dirs, filename, bin_size, window_size):
     return pd.concat(dfs, axis=0)
 
 
-def plot(data, x, y, hue, style, seed, savepath=None, show=True):
+def plot(data, x, y, hue, style, col, seed, savepath=None, show=True):
     print("Plotting using hue={hue}, style={style}, {seed}".format(hue=hue, style=style, seed=seed))
     assert not data.empty, "DataFrame is empty, please check query"
     # If asking for multiple envs, use facetgrid and adjust height
-    height = 3 if len(data['env'].unique()) > 2 else 5
-    col_wrap = 2 if len(data['env'].unique()) > 1 else 1
+    height = 3 if len(data[col].unique()) > 2 else 5
+    col_wrap = 2 if len(data[col].unique()) > 1 else 1
 
     palette = sns.color_palette('Set1', n_colors=len(data[hue].unique()), desat=0.5)
     if isinstance(seed, list) or seed == 'average':
@@ -62,7 +62,7 @@ def plot(data, x, y, hue, style, seed, savepath=None, show=True):
                         legend='full',
                         height=height,
                         aspect=1.5,
-                        col='env',
+                        col=col,
                         col_wrap=col_wrap,
                         palette=palette,
                         facet_kws={'sharey': False})
@@ -79,7 +79,7 @@ def plot(data, x, y, hue, style, seed, savepath=None, show=True):
                         legend='full',
                         height=height,
                         aspect=1.5,
-                        col='env',
+                        col=col,
                         col_wrap=col_wrap,
                         palette=palette,
                         facet_kws={'sharey': False})
@@ -110,6 +110,7 @@ def parse_args():
     parser.add_argument('--query', help='DF query string', type=str)
     parser.add_argument('--hue', help='Hue variable', type=str)
     parser.add_argument('--style', help='Style variable', type=str)
+    parser.add_argument('--col', help='Column variable', type=str, default='env')
     parser.add_argument('--seed', help='How to handle seeds', type=str, default='average')
 
     parser.add_argument('--no-plot', help='No plots', action='store_true')
@@ -141,6 +142,7 @@ if __name__ == "__main__":
              args.y,
              args.hue,
              args.style,
+             args.col,
              args.seed,
              savepath=args.savepath,
              show=(not args.no_show))
