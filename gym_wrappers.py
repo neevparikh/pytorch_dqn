@@ -4,8 +4,24 @@ import numpy as np
 import torchvision.transforms as T
 
 
-class ResetARI(gym.Wrapper):
+class ObservationDictToInfo(gym.Wrapper):
+    def __init__(self, env, state_key):
+        gym.Wrapper.__init__(self, env)
+        assert type(env.observation_space) == gym.spaces.Dict
+        self.observation_space = env.observation_space.spaces[state_key]
+        self.state_key = state_key
 
+    def reset(self, **kwargs):
+        next_state_as_dict = self.env.reset(**kwargs)
+        return next_state_as_dict[self.state_key]
+
+    def step(self, action):
+        next_state_as_dict, reward, done, info = self.env.step(action)
+        info.update(next_state_as_dict)
+        return next_state_as_dict[self.state_key], reward, done, info
+
+
+class ResetARI(gym.Wrapper):
     def __init__(self, env):
         gym.Wrapper.__init__(self, env)
 
@@ -33,7 +49,6 @@ class ResetARI(gym.Wrapper):
 # Adapted from OpenAI Baselines:
 # https://github.com/openai/baselines/blob/master/baselines/common/atari_wrappers.py
 class AtariPreprocess(gym.Wrapper):
-
     def __init__(self, env, shape=(84, 84)):
         """ Preprocessing as described in the Nature DQN paper (Mnih 2015) """
         gym.Wrapper.__init__(self, env)
@@ -60,13 +75,11 @@ class AtariPreprocess(gym.Wrapper):
 
 
 class MaxAndSkipEnv(gym.Wrapper):
-
     def __init__(self, env, skip=4):
         """Return only every `skip`-th frame"""
         gym.Wrapper.__init__(self, env)
         # most recent raw observations (for max pooling across time steps)
-        self._obs_buffer = np.zeros((2,) + env.observation_space.shape,
-                                    dtype=np.uint8)
+        self._obs_buffer = np.zeros((2,) + env.observation_space.shape, dtype=np.uint8)
         self._skip = skip
 
     def reset(self, **kwargs):
@@ -92,7 +105,6 @@ class MaxAndSkipEnv(gym.Wrapper):
 
 
 class FrameStack(gym.Wrapper):
-
     def __init__(self, env, k):
         """Stack k last frames.
         Returns lazy array, which is much more memory efficient.
@@ -104,11 +116,10 @@ class FrameStack(gym.Wrapper):
         self.k = k
         self.frames = deque([], maxlen=k)
         shp = env.observation_space.shape
-        self.observation_space = gym.spaces.Box(
-            low=0,
-            high=255,
-            shape=((k,) + shp),
-            dtype=env.observation_space.dtype)
+        self.observation_space = gym.spaces.Box(low=0,
+                                                high=255,
+                                                shape=((k,) + shp),
+                                                dtype=env.observation_space.dtype)
 
     def reset(self):
         ob = self.env.reset()
@@ -127,7 +138,6 @@ class FrameStack(gym.Wrapper):
 
 
 class LazyFrames(object):
-
     def __init__(self, frames):
         """This object ensures that common frames between the observations are
         only stored once.  It exists purely to optimize memory usage which can

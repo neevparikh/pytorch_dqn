@@ -8,7 +8,9 @@ import numpy as np
 import torch
 import gym
 
-from gym_wrappers import AtariPreprocess, MaxAndSkipEnv, FrameStack, ResetARI
+from gym_wrappers import AtariPreprocess, MaxAndSkipEnv, FrameStack, ResetARI, \
+        ObservationDictToInfo
+from gym.wrappers.pixel_observation import PixelObservationWrapper
 from atariari.benchmark.wrapper import AtariARIWrapper
 
 
@@ -174,15 +176,6 @@ def deque_to_tensor(last_num_frames):
     return torch.cat(list(last_num_frames), dim=0)
 
 
-def make_atari(env, num_frames):
-    """ Wrap env in atari processed env """
-    return FrameStack(MaxAndSkipEnv(AtariPreprocess(env), 4), num_frames)
-
-
-def make_ari(env):
-    """ Wrap env in reset to match observation """
-    return ResetARI(AtariARIWrapper(env))
-
 
 # Thanks to RoshanRane - Pytorch forums
 # (https://discuss.pytorch.org/t/check-gradient-flow-in-network/15063/10)
@@ -241,10 +234,41 @@ def append_timestamp(string, fmt_string=None):
     else:
         return string + "_" + str(now).replace(" ", "_")
 
+def make_atari(env, num_frames):
+    """ Wrap env in atari processed env """
+    return FrameStack(MaxAndSkipEnv(AtariPreprocess(env), 4), num_frames)
+
+
+def make_ari(env):
+    """ Wrap env in reset to match observation """
+    return ResetARI(AtariARIWrapper(env))
+
+
+def make_visual(env):
+    """ Wrap env to return pixel observations """
+    return ObservationDictToInfo(PixelObservationWrapper(env, pixels_only=False, 
+        pixel_keys=("pixels",)), "pixels")
+
+
 def initialize_environment(args):
     # Initialize environment
-    env = gym.make(args.env)
-    test_env = gym.make(args.env)
+    if args.env == "VisualCartPole-v0":
+        env = gym.make("CartPole-v0")
+        test_env = gym.make("CartPole-v0")
+        env.reset()
+        test_env.reset()
+        env = make_visual(env)
+        test_env = make_visual(env)
+    elif args.env == "VisualCartPole-v1":
+        env = gym.make("CartPole-v1")
+        test_env = gym.make("CartPole-v1")
+        env.reset()
+        test_env.reset()
+        env = make_visual(env)
+        test_env = make_visual(env)
+    else:
+        env = gym.make(args.env)
+        test_env = gym.make(args.env)
     if args.model_type == 'cnn':
         assert args.num_frames
         if not args.no_atari:
