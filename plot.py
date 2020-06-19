@@ -50,6 +50,7 @@ def plot(data, x, y, hue, style, col, seed, savepath=None, show=True):
     # If asking for multiple envs, use facetgrid and adjust height
     height = 3 if len(data[col].unique()) > 2 else 5
     col_wrap = 2 if len(data[col].unique()) > 1 else 1
+    col_order = ['small', 'medium', 'large', 'giant'] if col == 'model_shape' else None
 
     palette = sns.color_palette('Set1', n_colors=len(data[hue].unique()), desat=0.5)
     if isinstance(seed, list) or seed == 'average':
@@ -64,8 +65,9 @@ def plot(data, x, y, hue, style, col, seed, savepath=None, show=True):
                         aspect=1.5,
                         col=col,
                         col_wrap=col_wrap,
+                        col_order=col_order,
                         palette=palette,
-                        facet_kws={'sharey': False})
+                        facet_kws={'sharey': True})
 
     elif seed == 'all':
         g = sns.relplot(x=x,
@@ -81,8 +83,9 @@ def plot(data, x, y, hue, style, col, seed, savepath=None, show=True):
                         aspect=1.5,
                         col=col,
                         col_wrap=col_wrap,
+                        col_order=col_order,
                         palette=palette,
-                        facet_kws={'sharey': False})
+                        facet_kws={'sharey': True})
     else:
         raise ValueError("{seed} not a recognized choice".format(seed=seed))
 
