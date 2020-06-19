@@ -133,6 +133,7 @@ runs/
 .onager/
 saved_models/
 reward_log/
+logs/
 profile.out
 *.tar 
 *.pth
