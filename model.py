@@ -8,7 +8,6 @@ from replay_buffer import ReplayBuffer, Experience
 
 class DQN_Base_model(torch.nn.Module):
     """Docstring for DQN MLP model """
-
     def __init__(self, device, state_space, action_space, num_actions):
         """Defining DQN MLP model
         """
@@ -49,7 +48,6 @@ class DQN_Base_model(torch.nn.Module):
 
 class DQN_MLP_model(DQN_Base_model):
     """Docstring for DQN MLP model """
-
     def __init__(self, device, state_space, action_space, num_actions, model_shape):
         """Defining DQN MLP model
         """
@@ -63,7 +61,8 @@ class DQN_MLP_model(DQN_Base_model):
         elif model_shape == 'large':
             self.layer_sizes = [(1024, 1024), (1024, 1024), (1024, 1024), (1024, 1024)]
         elif model_shape == 'giant':
-            self.layer_sizes = [(2048, 2048), (2048, 2048), (2048, 2048), (2048, 2048), (2048, 2048), (2048, 2048)]
+            self.layer_sizes = [(2048, 2048), (2048, 2048), (2048, 2048), (2048, 2048),
+                                (2048, 2048), (2048, 2048)]
 
         self.build_model()
 
@@ -154,7 +153,6 @@ class DQN_CNN_model(DQN_Base_model):
 
 class DQN_agent:
     """Docstring for DQN agent """
-
     def __init__(self,
                  device,
                  state_space,
