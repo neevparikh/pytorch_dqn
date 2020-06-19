@@ -96,7 +96,7 @@ class DQN_CNN_model(DQN_Base_model):
                  action_space,
                  num_actions,
                  num_frames=4,
-                 final_dense_layer=512):
+                 final_dense_layer=1024):
         """Defining DQN CNN model
         """
         # initialize all parameters
@@ -129,7 +129,7 @@ class DQN_CNN_model(DQN_Base_model):
         self.head = torch.nn.Sequential(*[
             torch.nn.Linear(final_size[0] * final_size[1] * 64, self.final_dense_layer),
             torch.nn.ReLU(),
-            torch.nn.Linear(self.final_dense_layer, self.num_actions)
+            torch.nn.Linear(self.final_dense_layer, self.num_actions),
         ])
 
         trainable_parameters = sum(p.numel() for p in self.parameters() if p.requires_grad)
