@@ -90,22 +90,23 @@ class DQN_MLP_model(DQN_Base_model):
 
 class DQN_CNN_model(DQN_Base_model):
     """Docstring for DQN CNN model """
-
     def __init__(self,
                  device,
                  state_space,
                  action_space,
                  num_actions,
                  num_frames=4,
-                 final_dense_layer=512,
-                 input_shape=(84, 84)):
+                 final_dense_layer=512):
         """Defining DQN CNN model
         """
         # initialize all parameters
         super(DQN_CNN_model, self).__init__(device, state_space, action_space, num_actions)
         self.num_frames = num_frames
         self.final_dense_layer = final_dense_layer
-        self.input_shape = input_shape
+        if len(state_space.shape) > 2:
+            self.input_shape = state_space.shape[1:]
+        else:
+            self.input_shape = state_space
 
         self.build_model()
 
