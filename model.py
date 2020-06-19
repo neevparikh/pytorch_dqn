@@ -1,6 +1,8 @@
+import os
+import random
+
 import torch
 import numpy as np
-import random
 
 from utils import conv2d_size_out, append_timestamp
 from replay_buffer import ReplayBuffer, Experience
