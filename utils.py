@@ -7,12 +7,12 @@ from matplotlib.lines import Line2D
 import numpy as np
 import torch
 import gym
-
-from gym_wrappers import AtariPreprocess, MaxAndSkipEnv, FrameStack, ResetARI, \
-        ObservationDictToInfo
 from gym.wrappers.pixel_observation import PixelObservationWrapper
+from gym.wrappers.gray_scale_observation import GrayScaleObservation
 from atariari.benchmark.wrapper import AtariARIWrapper
 
+from gym_wrappers import AtariPreprocess, MaxAndSkipEnv, FrameStack, ResetARI, \
+        ObservationDictToInfo, ResizeObservation
 
 def parse_args():
     # Parse input arguments
@@ -244,14 +244,18 @@ def make_ari(env):
     return ResetARI(AtariARIWrapper(env))
 
 
-def make_visual(env):
+def make_visual(env, shape):
     """ Wrap env to return pixel observations """
-    return ObservationDictToInfo(PixelObservationWrapper(env, pixels_only=False, 
-        pixel_keys=("pixels",)), "pixels")
+    env = PixelObservationWrapper(env, pixels_only=False, pixel_keys=("pixels",))
+    env = ObservationDictToInfo(env, "pixels")
+    env = GrayScaleObservation(env)
+    env = ResizeObservation(env, shape)
+    return env
 
 
 def initialize_environment(args):
     # Initialize environment
+    visual_cartpole_shape = (80, 120)
     if args.env == "VisualCartPole-v0":
         from pyvirtualdisplay import Display
         display = Display(visible=False, backend='xvfb').start()
@@ -259,8 +263,8 @@ def initialize_environment(args):
         test_env = gym.make("CartPole-v0")
         env.reset()
         test_env.reset()
-        env = make_visual(env)
-        test_env = make_visual(env)
+        env = make_visual(env, visual_cartpole_shape)
+        test_env = make_visual(env, visual_cartpole_shape)
     elif args.env == "VisualCartPole-v1":
         from pyvirtualdisplay import Display
         display = Display(visible=False, backend='xvfb').start()
@@ -268,17 +272,22 @@ def initialize_environment(args):
         test_env = gym.make("CartPole-v1")
         env.reset()
         test_env.reset()
-        env = make_visual(env)
-        test_env = make_visual(env)
+        env = make_visual(env, visual_cartpole_shape)
+        test_env = make_visual(env, visual_cartpole_shape)
     else:
         env = gym.make(args.env)
         test_env = gym.make(args.env)
+
     if args.model_type == 'cnn':
         assert args.num_frames
         if not args.no_atari:
             print("Using atari preprocessing")
             env = make_atari(env, args.num_frames)
             test_env = make_atari(test_env, args.num_frames)
+        else:
+            print("FrameStacking with {}".format(args.num_frames))
+            env = FrameStack(env, args.num_frames)
+            test_env = FrameStack(test_env, args.num_frames)
 
     if args.ari:
         print("Using ARI")
