@@ -139,3 +139,4 @@ profile.out
 *.pth
 .idea
 .vscode/
+.vim/
