@@ -3,12 +3,28 @@ from collections import deque
 import numpy as np
 import torchvision.transforms as T
 import gym
-from gym.spaces import Box
-from gym import ObservationWrapper
 import cv2
 
+class IndexedObservation(gym.ObservationWrapper):
+    r""" Return elements of observation at given indices """
+    def __init__(self, env, indices):
+        super(IndexedObservation, self).__init__(env)
+        self.indices = indices
+
+        assert len(env.observation_space.shape) == 1, env.observation_space
+        wrapped_obs_len = env.observation_space.shape[0]
+        assert len(indices) <= wrapped_obs_len, indices
+        assert all(i < wrapped_obs_len for i in indices), indices
+        self.observation_space = gym.spaces.Box(low=env.observation_space.low[indices],
+                                                high=env.observation_space.high[indices],
+                                                dtype=env.observation_space.dtype)
+
+    def observation(self, observation):
+        return observation[self.indices]
+
+
 # Adapted from https://github.com/openai/gym/blob/master/gym/wrappers/resize_observation.py
-class ResizeObservation(ObservationWrapper):
+class ResizeObservation(gym.ObservationWrapper):
     r"""Downsample the image observation to a square image. """
     def __init__(self, env, shape):
         super(ResizeObservation, self).__init__(env)
@@ -18,7 +34,7 @@ class ResizeObservation(ObservationWrapper):
         self.shape = tuple(shape)
 
         obs_shape = self.shape + self.observation_space.shape[2:]
-        self.observation_space = Box(low=0, high=255, shape=obs_shape, dtype=np.uint8)
+        self.observation_space = gym.spaces.Box(low=0, high=255, shape=obs_shape, dtype=np.uint8)
 
     def observation(self, observation):
         observation = cv2.resize(observation, self.shape[::-1], interpolation=cv2.INTER_AREA)

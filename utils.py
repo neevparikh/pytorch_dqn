@@ -12,7 +12,7 @@ from gym.wrappers.gray_scale_observation import GrayScaleObservation
 from atariari.benchmark.wrapper import AtariARIWrapper
 
 from gym_wrappers import AtariPreprocess, MaxAndSkipEnv, FrameStack, ResetARI, \
-        ObservationDictToInfo, ResizeObservation
+        ObservationDictToInfo, ResizeObservation, IndexedObservation
 
 def parse_args():
     # Parse input arguments
@@ -196,6 +196,12 @@ def initialize_environment(args):
         test_env.reset()
         env = make_visual(env, visual_cartpole_shape)
         test_env = make_visual(env, visual_cartpole_shape)
+    elif args.env == "CartPole-PosAngle-v0":
+        env = IndexedObservation(gym.make("CartPole-v0"), [0,1])
+        test_env = IndexedObservation(gym.make("CartPole-v0"), [0,1])
+    elif args.env == "CartPole-PosAngle-v1":
+        env = IndexedObservation(gym.make("CartPole-v1"), [0,1])
+        test_env = IndexedObservation(gym.make("CartPole-v1"), [0,1])
     else:
         env = gym.make(args.env)
         test_env = gym.make(args.env)
