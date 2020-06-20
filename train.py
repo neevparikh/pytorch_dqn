@@ -123,7 +123,7 @@ def episode_loop(env, test_env, agent, args, writer):
 
 args = parse_args()
 
-# Set tag for this run
+# Set seeds
 reset_seeds(args.seed)
 
 # Initialize envs

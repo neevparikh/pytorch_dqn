@@ -4,12 +4,47 @@ import random
 import torch
 import numpy as np
 
-from utils import conv2d_size_out, append_timestamp
+from utils import conv2d_size_out, append_timestamp, build_phi_network
 from replay_buffer import ReplayBuffer, Experience
+from modules import MarkovHead
+
+
+class FeatureNet(torch.nn.Module):
+    def __init__(self, args, num_actions, input_shape):
+        super(FeatureNet, self).__init__()
+        self.phi, self.feature_size = build_phi_network(args, input_shape)
+        self.markov_head = MarkovHead(args, self.feature_size, num_actions)
+
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=args.lr)
+
+    def forward(self, x):
+        return self.phi(x)
+
+    def loss(self, batch):
+        states, actions, rewards, next_states, dones = batch
+        markov_loss = self.markov_head.compute_markov_loss(
+            z0=self.phi(torch.as_tensor(states.astype(np.float32))),
+            z1=self.phi(torch.as_tensor(next_states.astype(np.float32))),
+            a=torch.as_tensor(actions, dtype=torch.int64),
+        )
+        loss = markov_loss
+        return loss
+
+    def save_phi(self, path, name):
+        full_path = os.path.join(path, name)
+        torch.save((self.phi, self.feature_size), full_path)
+        return full_path
+
+    def train_one_batch(self, batch):
+        loss = self.loss(batch)
+        self.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+        return loss.detach().cpu().numpy()
 
 
 class DQN_Base_model(torch.nn.Module):
-    """Docstring for DQN MLP model """
+    """Docstring for DQN Base model """
     def __init__(self, device, state_space, action_space, num_actions):
         """Defining DQN MLP model
         """
@@ -108,7 +143,7 @@ class DQN_CNN_model(DQN_Base_model):
         if len(state_space.shape) > 2:
             self.input_shape = state_space.shape[1:]
         else:
-            self.input_shape = state_space
+            self.input_shape = state_space.shape
 
         self.build_model()
 
