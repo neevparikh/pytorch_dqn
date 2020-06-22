@@ -61,10 +61,10 @@ def parse_args(no_parse=False):
                         default=0, help='How much to clip the gradients by, 0 is none')
     parser.add_argument('--reward-clip', type=float, required=False,
                         default=0, help='How much to clip reward, i.e. [-rc, rc]; 0 is unclipped')
-    parser.add_argument('--epsilon-decay', type=lambda x: int(float(x)), required=False,
-                        default=5000, help='Parameter for epsilon decay')
-    parser.add_argument('--epsilon-decay-end', type=float, required=False,
-                        default=0.05, help='Parameter for epsilon decay end')
+    parser.add_argument('--epsilon-decay-length', type=lambda x: int(float(x)), required=False,
+                        default=5000, help='Number of steps to linearly decay epsilon')
+    parser.add_argument('--final-epsilon-value', type=float, required=False,
+                        default=0.05, help='Final epsilon value, between 0 and 1')
     parser.add_argument('--replay-buffer-size', type=lambda x: int(float(x)), required=False,
                         default=50000, help='Max size of replay buffer')
     parser.add_argument('--lr', type=float, required=False,

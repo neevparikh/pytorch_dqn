@@ -200,8 +200,8 @@ class DQN_agent:
                  target_moving_average,
                  gamma,
                  replay_buffer_size,
-                 epsilon_decay,
-                 epsilon_decay_end,
+                 epsilon_decay_length,
+                 final_epsilon_value,
                  warmup_period,
                  double_DQN,
                  model_type="mlp",
@@ -238,8 +238,8 @@ class DQN_agent:
 
         self.gamma = gamma
         self.target_moving_average = target_moving_average
-        self.epsilon_decay = epsilon_decay
-        self.epsilon_decay_end = epsilon_decay_end
+        self.epsilon_decay_length = epsilon_decay_length
+        self.final_epsilon_value = final_epsilon_value
         self.warmup_period = warmup_period
         self.device = device
 
@@ -309,10 +309,12 @@ class DQN_agent:
             self.online.epsilon = 1
             self.target.epsilon = 1
         else:
-            self.online.epsilon = max(self.epsilon_decay_end,
-                                      1 - (global_steps - self.warmup_period) / self.epsilon_decay)
-            self.target.epsilon = max(self.epsilon_decay_end,
-                                      1 - (global_steps - self.warmup_period) / self.epsilon_decay)
+            current_epsilon_decay = 1 - (1 - self.final_epsilon_value) * (
+                global_steps - self.warmup_period) / self.epsilon_decay_length
+
+            self.online.epsilon = max(self.final_epsilon_value, current_epsilon_decay)
+            self.target.epsilon = max(self.final_epsilon_value, current_epsilon_decay)
+
         if writer:
             writer.add_scalar('training/epsilon', self.online.epsilon, global_steps)
 
