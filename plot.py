@@ -48,10 +48,13 @@ def plot(data, x, y, hue, style, col, seed, savepath=None, show=True):
     print("Plotting using hue={hue}, style={style}, {seed}".format(hue=hue, style=style, seed=seed))
     assert not data.empty, "DataFrame is empty, please check query"
     # If asking for multiple envs, use facetgrid and adjust height
-    height = 3 if len(data[col].unique()) > 2 else 5
-    col_wrap = 2 if len(data[col].unique()) > 1 else 1
+    height = 3 if col is not None and len(data[col].unique()) > 2 else 5
+    if col:
+        col_wrap = 2 if len(data[col].unique()) > 1 else 1
+    else:
+        col_wrap = None
     col_order = ['small', 'medium', 'large', 'giant'] if col == 'model_shape' else None
-
+    
     palette = sns.color_palette('Set1', n_colors=len(data[hue].unique()), desat=0.5)
     if isinstance(seed, list) or seed == 'average':
         g = sns.relplot(x=x,
@@ -113,7 +116,7 @@ def parse_args():
     parser.add_argument('--query', help='DF query string', type=str)
     parser.add_argument('--hue', help='Hue variable', type=str)
     parser.add_argument('--style', help='Style variable', type=str)
-    parser.add_argument('--col', help='Column variable', type=str, default='env')
+    parser.add_argument('--col', help='Column variable', type=str)
     parser.add_argument('--seed', help='How to handle seeds', type=str, default='average')
 
     parser.add_argument('--no-plot', help='No plots', action='store_true')
