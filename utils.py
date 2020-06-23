@@ -25,7 +25,8 @@ def parse_args(no_parse=False):
                         help='Whether to use annotated RAM')
     parser.add_argument('--model-type', type=str, choices=['cnn', 'mlp'], required=True,
                         default='mlp', help="Type of architecture")
-    parser.add_argument('--model-shape', type=str, choices=['small', 'medium', 'large', 'giant'],
+    parser.add_argument('--model-shape', type=str,
+                        choices=['tiny', 'small', 'medium', 'large', 'giant'],
                         default='medium', help="Shape of architecture (mlp only)")
     parser.add_argument('--gamma', type=float, required=False,
                         default=0.99, help='Gamma parameter')

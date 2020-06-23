@@ -91,15 +91,18 @@ class DQN_MLP_model(DQN_Base_model):
         # initialize all parameters
         super(DQN_MLP_model, self).__init__(device, state_space, action_space, num_actions)
         # architecture
-        if model_shape == 'small':
-            self.layer_sizes = [(64, 64), (64, 64)]
+        if model_shape == 'tiny':
+            self.layer_sizes = [(15,),(15,)]
+        elif model_shape == 'small':
+            self.layer_sizes = [(64,), (64, 64), (64, 64), (64,)]
         elif model_shape == 'medium':
-            self.layer_sizes = [(256, 256), (256, 256), (256, 256)]
+            self.layer_sizes = [(256,), (256, 256), (256, 256), (256, 256), (256,)]
         elif model_shape == 'large':
-            self.layer_sizes = [(1024, 1024), (1024, 1024), (1024, 1024), (1024, 1024)]
+            self.layer_sizes = [(1024,), (1024, 1024), (1024, 1024), (1024, 1024), (1024, 1024),
+                    (1024,)]
         elif model_shape == 'giant':
-            self.layer_sizes = [(2048, 2048), (2048, 2048), (2048, 2048), (2048, 2048),
-                                (2048, 2048), (2048, 2048)]
+            self.layer_sizes = [(2048,), (2048, 2048), (2048, 2048), (2048, 2048), (2048, 2048),
+                                (2048, 2048), (2048, 2048), (2048,)]
 
         self.build_model()
 
@@ -107,13 +110,13 @@ class DQN_MLP_model(DQN_Base_model):
         # output should be in batchsize x num_actions
         # First layer takes in states
         layers = [
-            torch.nn.Linear(self.state_space.shape[0], self.layer_sizes[0][0]), torch.nn.ReLU()
+            torch.nn.Linear(self.state_space.shape[0], self.layer_sizes[0][0]), torch.nn.ReLU(),
         ]
-        for size in self.layer_sizes:
+        for size in self.layer_sizes[1:-1]:
             layer = [torch.nn.Linear(size[0], size[1]), torch.nn.ReLU()]
             layers.extend(layer)
 
-        layers.append(torch.nn.Linear(self.layer_sizes[-1][1], self.num_actions))
+        layers.append(torch.nn.Linear(self.layer_sizes[-1][0], self.num_actions))
 
         self.body = torch.nn.Sequential(*layers)
 
