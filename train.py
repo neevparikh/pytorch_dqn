@@ -1,4 +1,3 @@
-import random
 import time
 import os
 import json
@@ -81,10 +80,9 @@ def episode_loop(env, test_env, agent, args, writer):
         score = 0
         # Collect data from the environment
         while not done:
-            global_steps += 1
             action = agent.online.act(state, agent.online.epsilon)
 
-            next_state, reward, done, info = env.step(action)
+            next_state, reward, done, _ = env.step(action)
             score += reward
             steps += 1
             if args.reward_clip:
@@ -95,6 +93,13 @@ def episode_loop(env, test_env, agent, args, writer):
             # Store in replay buffer
             agent.replay_buffer.append(state, action, clipped_reward, next_state, int(done))
             state = next_state
+
+            # Testing policy
+            if global_steps % args.test_policy_steps == 0:
+                test_policy(test_env, agent, episode, global_steps, writer, log_filename, args)
+                if log_filename:
+                    with open(log_filename, "a") as f:
+                        f.write("{:.2f}\n".format(time.time() - t_zero))
 
             # If not enough data, try again
             if len(agent.replay_buffer) < args.batchsize or global_steps < args.warmup_period:
@@ -107,12 +112,7 @@ def episode_loop(env, test_env, agent, args, writer):
             if args.model_path is not None and global_steps % args.checkpoint_steps == 0:
                 agent.save_checkpoint(episode, global_steps, args)
 
-            # Testing policy
-            if global_steps % args.test_policy_steps == 0:
-                test_policy(test_env, agent, episode, global_steps, writer, log_filename, args)
-                if log_filename:
-                    with open(log_filename, "a") as f:
-                        f.write("{:.2f}\n".format(time.time() - t_zero))
+            global_steps += 1
 
         if not args.no_tensorboard:
             writer.add_scalar('training/avg_episode_loss', cumulative_loss / steps, episode)
