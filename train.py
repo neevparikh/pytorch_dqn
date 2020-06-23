@@ -101,6 +101,8 @@ def episode_loop(env, test_env, agent, args, writer):
                     with open(log_filename, "a") as f:
                         f.write("{:.2f}\n".format(time.time() - t_zero))
 
+            global_steps += 1
+
             # If not enough data, try again
             if len(agent.replay_buffer) < args.batchsize or global_steps < args.warmup_period:
                 continue
@@ -111,8 +113,6 @@ def episode_loop(env, test_env, agent, args, writer):
 
             if args.model_path is not None and global_steps % args.checkpoint_steps == 0:
                 agent.save_checkpoint(episode, global_steps, args)
-
-            global_steps += 1
 
         if not args.no_tensorboard:
             writer.add_scalar('training/avg_episode_loss', cumulative_loss / steps, episode)
