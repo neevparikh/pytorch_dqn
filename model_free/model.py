@@ -4,7 +4,7 @@ import random
 import torch
 import numpy as np
 
-from utils import conv2d_size_out, append_timestamp, build_phi_network
+from utils import conv2d_size_out, append_timestamp, build_phi_network, plot_grad_flow
 from replay_buffer import ReplayBuffer, Experience
 from modules import MarkovHead
 
@@ -94,7 +94,7 @@ class DQN_MLP_model(DQN_Base_model):
         if model_shape == 'tiny':
             self.layer_sizes = [(15,),(15,)]
         elif model_shape == 'small':
-            self.layer_sizes = [(64,), (64, 64), (64, 64), (64,)]
+            self.layer_sizes = [(16,), (16, 16), (16, 16), (16, 16), (16,)]
         elif model_shape == 'medium':
             self.layer_sizes = [(256,), (256, 256), (256, 256), (256, 256), (256,)]
         elif model_shape == 'large':
@@ -260,9 +260,11 @@ class DQN_agent:
         action_tensor = torch.FloatTensor(minibatch.action).to(self.device, dtype=torch.float32)
         reward_tensor = torch.FloatTensor(minibatch.reward).to(self.device, dtype=torch.float32)
         done_tensor = torch.ByteTensor(minibatch.done).to(self.device, dtype=torch.uint8)
+
         # Get q value predictions
         q_pred_batch = self.online(state_tensor).gather(
             dim=1, index=action_tensor.long().unsqueeze(1)).squeeze(1)
+
         with torch.no_grad():
             if self.double_DQN:
                 selected_actions = self.online.argmax_over_actions(next_state_tensor)
@@ -296,6 +298,10 @@ class DQN_agent:
 
         if gradient_clip:
             torch.nn.utils.clip_grad_norm_(self.online.parameters(), gradient_clip)
+
+        if writer and global_steps % 1000 == 0:
+            writer.add_figure('gradient_flow', plot_grad_flow(self.online.named_parameters()),
+                    global_steps)
 
         # Update parameters
         self.optimizer.step()

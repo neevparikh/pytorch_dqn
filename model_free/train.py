@@ -90,6 +90,12 @@ def episode_loop(env, test_env, agent, args, writer):
             else:
                 clipped_reward = reward
 
+            state_min = np.array([-2.46205455, -3.92994702, -0.24002665, -2.39373247]) * 2
+            state_max = np.array([2.4408714 , 3.72869745, 0.26060147, 3.11589859]) * 2
+
+            state = ((state - state_min) * 2) / (state_max - state_min) - 1
+            next_state = ((next_state - state_min) * 2) / (state_max - state_min) - 1
+
             # Store in replay buffer
             agent.replay_buffer.append(state, action, clipped_reward, next_state, int(done))
             state = next_state
