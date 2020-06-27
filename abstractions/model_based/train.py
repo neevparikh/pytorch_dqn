@@ -2,7 +2,7 @@ import time
 
 import gym
 
-from common.replay_buffer import ReplayBuffer
+from ..common.replay_buffer import ReplayBuffer
 
 env = gym.make("CartPole-v1")
 

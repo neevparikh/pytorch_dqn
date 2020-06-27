@@ -52,7 +52,7 @@ common_parser.add_argument('--reward-clip', type=float, required=False, default=
         help='How much to clip reward, i.e. [-rc, rc]; 0 is unclipped')
 
 model_free_parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        parents=[common_parser])
+        parents=[common_parser], add_help=False)
 model_free_parser.add_argument('--ari', action='store_true', required=False,
         help='Whether to use annotated RAM')
 model_free_parser.add_argument('--model-type', type=str, required=True, default='mlp',
@@ -86,7 +86,7 @@ model_free_parser.add_argument('--vanilla-DQN', action='store_true', required=Fa
         help='Use the vanilla dqn update instead of double DQN')
 
 model_based_parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        parents=[common_parser])
+        parents=[common_parser], add_help=False)
 
 def init_weights(m):
     if type(m) == torch.nn.Linear:

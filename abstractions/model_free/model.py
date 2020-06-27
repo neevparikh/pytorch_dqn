@@ -4,9 +4,9 @@ import random
 import torch
 import numpy as np
 
-from common.utils import conv2d_size_out, append_timestamp, build_phi_network, plot_grad_flow
-from common.replay_buffer import ReplayBuffer, Experience
-from common.modules import MarkovHead
+from ..common.utils import conv2d_size_out, append_timestamp, build_phi_network, plot_grad_flow
+from ..common.replay_buffer import ReplayBuffer, Experience
+from ..common.modules import MarkovHead
 
 
 class FeatureNet(torch.nn.Module):

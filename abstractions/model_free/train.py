@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from common.utils import model_free_parser, append_timestamp, reset_seeds, initialize_environment
+from ..common.utils import model_free_parser, append_timestamp, reset_seeds, initialize_environment
 from .model import DQN_agent
 
 
