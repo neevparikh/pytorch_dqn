@@ -50,6 +50,13 @@ common_parser.add_argument('--gradient-clip', type=float, required=False, defaul
         help='How much to clip the gradients by, 0 is none')
 common_parser.add_argument('--reward-clip', type=float, required=False, default=0,
         help='How much to clip reward, i.e. [-rc, rc]; 0 is unclipped')
+common_parser.add_argument('--model-shape', type=str, default='medium',
+        choices=['tiny', 'small', 'medium', 'large', 'giant'], 
+        help="Shape of architecture (mlp only)")
+common_parser.add_argument('--num-frames', type=int, required=False, default=4,
+        help='Number of frames to stack (CNN only)')
+common_parser.add_argument('--warmup-period', type=float_to_int, required=False, default=2000,
+        help='Number of steps to act randomly and not train')
 
 model_free_parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         parents=[common_parser], add_help=False)
@@ -58,23 +65,16 @@ model_free_parser.add_argument('--ari', action='store_true', required=False,
 model_free_parser.add_argument('--model-type', type=str, required=True, default='mlp',
         choices=['cnn', 'mlp'],
         help="Type of architecture")
-model_free_parser.add_argument('--model-shape', type=str, default='medium',
-        choices=['tiny', 'small', 'medium', 'large', 'giant'], 
-        help="Shape of architecture (mlp only)")
 model_free_parser.add_argument('--load-checkpoint-path', type=str, required=False,
         help='Path to checkpoint')
 model_free_parser.add_argument('--no-atari', action='store_true', required=False,
         help='Do not use atari preprocessing')
-model_free_parser.add_argument('--num-frames', type=int, required=False, default=4,
-        help='Number of frames to stack (CNN only)')
 model_free_parser.add_argument('--checkpoint-steps', type=float_to_int, required=False,
         default=20000,
         help='Checkpoint every so often')
 model_free_parser.add_argument('--test-policy-steps', type=float_to_int, required=False,
         default=1000,
         help='Policy is tested every these many steps')
-model_free_parser.add_argument('--warmup-period', type=float_to_int, required=False, default=2000,
-        help='Number of steps to act randomly and not train')
 model_free_parser.add_argument('--epsilon-decay-length', type=float_to_int, required=False,
         default=5000,
         help='Number of steps to linearly decay epsilon')
