@@ -11,79 +11,82 @@ from gym.wrappers.pixel_observation import PixelObservationWrapper
 from gym.wrappers.gray_scale_observation import GrayScaleObservation
 from atariari.benchmark.wrapper import AtariARIWrapper
 
-from gym_wrappers import AtariPreprocess, MaxAndSkipEnv, FrameStack, ResetARI, \
+from .gym_wrappers import AtariPreprocess, MaxAndSkipEnv, FrameStack, ResetARI, \
         ObservationDictToInfo, ResizeObservation, IndexedObservation
-from modules import Reshape
+from .modules import Reshape
 
-def parse_args(no_parse=False):
-    # Parse input arguments
-    # Use --help to see a pretty description of the arguments
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--env', type=str, required=True,
-                        help='The gym environment to train on')
-    parser.add_argument('--ari', action='store_true', required=False,
-                        help='Whether to use annotated RAM')
-    parser.add_argument('--model-type', type=str, choices=['cnn', 'mlp'], required=True,
-                        default='mlp', help="Type of architecture")
-    parser.add_argument('--model-shape', type=str,
-                        choices=['tiny', 'small', 'medium', 'large', 'giant'],
-                        default='medium', help="Shape of architecture (mlp only)")
-    parser.add_argument('--gamma', type=float, required=False,
-                        default=0.99, help='Gamma parameter')
-    parser.add_argument('--model-path', type=str, required=False,
-                        help='The path to the save the pytorch model')
-    parser.add_argument('--output-path', type=str, required=False,
-                        help='The output directory to store training stats')
-    parser.add_argument('--load-checkpoint-path', type=str, required=False,
-                        help='Path to checkpoint')
-    parser.add_argument('--no-atari', action='store_true', required=False,
-                        help='Do not use atari preprocessing')
-    parser.add_argument('--no-tensorboard', action='store_true', required=False,
-                        help='Do not use Tensorboard')
-    parser.add_argument('--gpu', action='store_true', required=False,
-                        help='Use the gpu or not')
-    parser.add_argument('--render', action='store_true', required=False,
-                        help='Render visual or not')
-    parser.add_argument('--render-episodes', type=int, required=False,
-                        default=5, help='Render every these many episodes')
-    parser.add_argument('--num-frames', type=int, required=False,
-                        default=4, help='Number of frames to stack (CNN only)')
-    parser.add_argument('--max-steps', type=lambda x: int(float(x)), required=False,
-                        default=40000, help='Number of steps to run for')
-    parser.add_argument('--checkpoint-steps', type=lambda x: int(float(x)), required=False,
-                        default=20000, help='Checkpoint every so often')
-    parser.add_argument('--test-policy-steps', type=lambda x: int(float(x)), required=False,
-                        default=1000, help='Policy is tested every these many steps')
-    parser.add_argument('--warmup-period', type=lambda x: int(float(x)), required=False,
-                        default=2000, help='Number of steps to act randomly and not train')
-    parser.add_argument('--batchsize', type=int, required=False,
-                        default=32, help='Number of experiences sampled from replay buffer')
-    parser.add_argument('--gradient-clip', type=float, required=False,
-                        default=0, help='How much to clip the gradients by, 0 is none')
-    parser.add_argument('--reward-clip', type=float, required=False,
-                        default=0, help='How much to clip reward, i.e. [-rc, rc]; 0 is unclipped')
-    parser.add_argument('--epsilon-decay-length', type=lambda x: int(float(x)), required=False,
-                        default=5000, help='Number of steps to linearly decay epsilon')
-    parser.add_argument('--final-epsilon-value', type=float, required=False,
-                        default=0.05, help='Final epsilon value, between 0 and 1')
-    parser.add_argument('--replay-buffer-size', type=lambda x: int(float(x)), required=False,
-                        default=50000, help='Max size of replay buffer')
-    parser.add_argument('--lr', type=float, required=False,
-                        default=0.001, help='Learning rate for the optimizer')
-    parser.add_argument('--target-moving-average', type=float, required=False,
-                        default=0.01, help='EMA parameter for target network')
-    parser.add_argument('--vanilla-DQN', action='store_true', required=False,
-                        help='Use the vanilla dqn update instead of double DQN')
-    parser.add_argument('--seed', type=int, required=False,
-                        default=10, help='The random seed for this run')
-    parser.add_argument('--run-tag', type=str, required=True,
-                        help="Run tag for the experient run.")
+float_to_int = lambda x: int(float(x))
 
-    if no_parse:
-        return parser
-    else:
-        return parser.parse_args()
+common_parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+common_parser.add_argument('--env', type=str, required=True,
+        help='The gym environment to train on')
+common_parser.add_argument('--gamma', type=float, required=False, default=0.99,
+        help='Gamma parameter')
+common_parser.add_argument('--no-tensorboard', action='store_true', required=False,
+        help='Do not use Tensorboard')
+common_parser.add_argument('--gpu', action='store_true', required=False,
+        help='Use the gpu or not')
+common_parser.add_argument('--max-steps', type=float_to_int, required=False, default=40000,
+        help='Number of steps to run for')
+common_parser.add_argument('--model-path', type=str, required=False,
+        help='The path to the save the pytorch model')
+common_parser.add_argument('--output-path', type=str, required=False,
+        help='The output directory to store training stats')
+common_parser.add_argument('--seed', type=int, required=False, default=10,
+        help='The random seed for this run')
+common_parser.add_argument('--run-tag', type=str, required=True,
+        help="Run tag for the experient run.")
+common_parser.add_argument('--render', action='store_true', required=False,
+        help='Render visual or not')
+common_parser.add_argument('--render-episodes', type=int, required=False, default=5,
+        help='Render every these many episodes')
+common_parser.add_argument('--replay-buffer-size', type=float_to_int, required=False, default=50000,
+        help='Max size of replay buffer')
+common_parser.add_argument('--lr', type=float, required=False, default=0.001,
+        help='Learning rate for the optimizer')
+common_parser.add_argument('--batchsize', type=int, required=False, default=32,
+        help='Number of experiences sampled from replay buffer')
+common_parser.add_argument('--gradient-clip', type=float, required=False, default=0,
+        help='How much to clip the gradients by, 0 is none')
+common_parser.add_argument('--reward-clip', type=float, required=False, default=0,
+        help='How much to clip reward, i.e. [-rc, rc]; 0 is unclipped')
 
+model_free_parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        parents=[common_parser])
+model_free_parser.add_argument('--ari', action='store_true', required=False,
+        help='Whether to use annotated RAM')
+model_free_parser.add_argument('--model-type', type=str, required=True, default='mlp',
+        choices=['cnn', 'mlp'],
+        help="Type of architecture")
+model_free_parser.add_argument('--model-shape', type=str, default='medium',
+        choices=['tiny', 'small', 'medium', 'large', 'giant'], 
+        help="Shape of architecture (mlp only)")
+model_free_parser.add_argument('--load-checkpoint-path', type=str, required=False,
+        help='Path to checkpoint')
+model_free_parser.add_argument('--no-atari', action='store_true', required=False,
+        help='Do not use atari preprocessing')
+model_free_parser.add_argument('--num-frames', type=int, required=False, default=4,
+        help='Number of frames to stack (CNN only)')
+model_free_parser.add_argument('--checkpoint-steps', type=float_to_int, required=False,
+        default=20000,
+        help='Checkpoint every so often')
+model_free_parser.add_argument('--test-policy-steps', type=float_to_int, required=False,
+        default=1000,
+        help='Policy is tested every these many steps')
+model_free_parser.add_argument('--warmup-period', type=float_to_int, required=False, default=2000,
+        help='Number of steps to act randomly and not train')
+model_free_parser.add_argument('--epsilon-decay-length', type=float_to_int, required=False,
+        default=5000,
+        help='Number of steps to linearly decay epsilon')
+model_free_parser.add_argument('--final-epsilon-value', type=float, required=False, default=0.05,
+        help='Final epsilon value, between 0 and 1')
+model_free_parser.add_argument('--target-moving-average', type=float, required=False, default=0.01,
+        help='EMA parameter for target network')
+model_free_parser.add_argument('--vanilla-DQN', action='store_true', required=False,
+        help='Use the vanilla dqn update instead of double DQN')
+
+model_based_parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        parents=[common_parser])
 
 def init_weights(m):
     if type(m) == torch.nn.Linear:
@@ -268,8 +271,7 @@ def initialize_environment(args):
 
     if type(env.action_space) != gym.spaces.Discrete:
         raise NotImplementedError("DQN for continuous action_spaces hasn't been\
-                implemented")
+                implemented"                                                        )
     env.seed(args.seed)
     test_env.seed(args.seed + 1000)
     return env, test_env
-

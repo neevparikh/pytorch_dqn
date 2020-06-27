@@ -1,13 +1,14 @@
 import json
 import os
+import argparse
 
 import numpy as np
 import torch
 from tqdm import tqdm
 
-from utils import initialize_environment, reset_seeds, parse_args
-from model import FeatureNet
-from replay_buffer import ReplayBuffer
+from common.utils import initialize_environment, reset_seeds, model_free_parser
+from .model import FeatureNet
+from common.replay_buffer import ReplayBuffer
 
 
 def generate_experiences(args, env):
@@ -70,7 +71,9 @@ def train():
 
 
 if __name__ == '__main__':
-    parser = parse_args(no_parse=True)
+    parser = model_free_parser
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+            parents=[model_free_parser])
     parser.add_argument('--max-episode-length',
                         type=int,
                         default=int(108e3),

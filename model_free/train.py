@@ -2,14 +2,12 @@ import time
 import os
 import json
 
-import gym
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from utils import parse_args, make_ari, make_atari, append_timestamp, reset_seeds, \
-        initialize_environment
-from model import DQN_agent
+from common.utils import model_free_parser, append_timestamp, reset_seeds, initialize_environment
+from .model import DQN_agent
 
 
 def test_policy(test_env, agent, episode, global_steps, writer, log_filename, args):
@@ -127,7 +125,7 @@ def episode_loop(env, test_env, agent, args, writer):
         episode += 1
 
 
-args = parse_args()
+args = model_free_parser.parse_args()
 
 # Set seeds
 reset_seeds(args.seed)
