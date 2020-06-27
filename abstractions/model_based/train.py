@@ -31,7 +31,7 @@ if __name__ == "__main__":
     env = gym.make(args.env)
     replay_buffer = ReplayBuffer(args.replay_buffer_size)
     
-    model = ModelNet(args, device, env.observation_space, env.action_space.n)
+    model = ModelNet(args, device, env.observation_space, env.action_space)
     model = model.to(device)
 
     global_steps = 0
@@ -66,7 +66,7 @@ if __name__ == "__main__":
         end = time.time()
 
         if writer and global_steps >= args.warmup_period and len(replay_buffer) >= args.batchsize:
-            writer.add_scalar('training/episode_loss', cumulative_loss, episode)
+            writer.add_scalar('episodewise/episode_loss', cumulative_loss, episode)
 
         info_str = "episode: {}, ".format(episode)
         info_str += "steps: {}, ".format(global_steps)

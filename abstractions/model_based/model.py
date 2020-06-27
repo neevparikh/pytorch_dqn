@@ -1,26 +1,24 @@
 import torch
 
-from ..common.utils import plot_grad_flow
-
 class ModelNet(torch.nn.Module):
-    def __init__(self, args, device, state_space, num_actions):
+    def __init__(self, args, device, state_space, action_space):
         super(ModelNet, self).__init__()
         self.state_space = state_space
-        self.num_actions = num_actions
+        self.num_actions = action_space.n
+        self.action_space = action_space
         self.device = device
 
         if args.model_shape == 'tiny':
-            self.layer_sizes = [(15,),(15,)]
+            self.layer_sizes = [(15,),]
         elif args.model_shape == 'small':
-            self.layer_sizes = [(16,), (16, 16), (16, 16), (16, 16), (16,)]
+            self.layer_sizes = [(16,), (16, 16), (16, 16), (16, 16),]
         elif args.model_shape == 'medium':
-            self.layer_sizes = [(256,), (256, 256), (256, 256), (256, 256), (256,)]
+            self.layer_sizes = [(128,), (128, 128), (128, 128), (128, 128),]
         elif args.model_shape == 'large':
-            self.layer_sizes = [(1024,), (1024, 1024), (1024, 1024), (1024, 1024), (1024, 1024),
-                    (1024,)]
+            self.layer_sizes = [(1024,), (1024, 1024), (1024, 1024), (1024, 1024), (1024, 1024),]
         elif args.model_shape == 'giant':
             self.layer_sizes = [(2048,), (2048, 2048), (2048, 2048), (2048, 2048), (2048, 2048),
-                                (2048, 2048), (2048, 2048), (2048,)]
+                                (2048, 2048), (2048, 2048),]
 
         self.build_model()
 
@@ -29,48 +27,65 @@ class ModelNet(torch.nn.Module):
 
         self.optimizer = torch.optim.Adam(self.parameters(), lr=args.lr)
 
-
     def build_model(self):
         layers = [
-            torch.nn.Linear(self.state_space.shape[0] + 2, self.layer_sizes[0][0]), torch.nn.ReLU(),
+            torch.nn.Linear(self.state_space.shape[0] + 1, self.layer_sizes[0][0]),
+            torch.nn.ReLU(),
         ]
-        for size in self.layer_sizes[1:-1]:
+        for size in self.layer_sizes[1:]:
             layer = [torch.nn.Linear(size[0], size[1]), torch.nn.ReLU()]
             layers.extend(layer)
 
-        layers.append(torch.nn.Linear(self.layer_sizes[-1][0], self.state_space.shape[0]))
-
         self.body = torch.nn.Sequential(*layers)
 
-    def forward(self, state, action, reward):
+        self.state_head = torch.nn.Linear(self.layer_sizes[-1][1], self.state_space.shape[0])
+        self.reward_head = torch.nn.Linear(self.layer_sizes[-1][1], 1)
+        self.done_head = torch.nn.Linear(self.layer_sizes[-1][1], 1)
+
+    def forward(self, state, action):
         state = torch.as_tensor(state, dtype=torch.float32).to(self.device)
         action = torch.as_tensor(action, dtype=torch.float32).unsqueeze(-1).to(self.device)
-        reward = torch.as_tensor(reward, dtype=torch.float32).unsqueeze(-1).to(self.device)
-        return self.body(torch.cat([state, action, reward], dim=1))
+        output = self.body(torch.cat([state, action], dim=1))
+        return self.state_head(output), self.reward_head(output), self.done_head(output)
 
-    def loss(self, state, action, reward, next_state, writer=None, writer_step=None):
-        pred_state = self(state, action, reward)
+    def loss(self, batch, writer=None, writer_step=None):
+        state, action, reward, next_state, done = batch
+        pred_state, pred_reward, pred_done = self(state, action)
+
         next_state = torch.as_tensor(next_state, dtype=torch.float32).to(self.device)
+        reward = torch.as_tensor(reward, dtype=torch.float32).unsqueeze(-1).to(self.device)
+        done = torch.as_tensor(done, dtype=torch.float32).unsqueeze(-1).to(self.device)
 
-        loss = torch.nn.functional.mse_loss(pred_state, next_state)
+        state_loss = torch.nn.functional.mse_loss(pred_state, next_state) 
+        reward_loss = torch.nn.functional.mse_loss(pred_reward, reward)
+        done_loss = torch.nn.functional.binary_cross_entropy(pred_done, done)
+
+        loss = state_loss + reward_loss + done_loss
 
         if writer:
-            writer.add_scalar('training/step_loss', loss.mean(), writer_step)
+            writer.add_scalar('stepwise/reward_loss', reward_loss.mean(), writer_step)
+            writer.add_scalar('stepwise/done_loss', done_loss.mean(), writer_step)
+            writer.add_scalar('stepwise/state_loss', state_loss.mean(), writer_step)
+            writer.add_scalar('stepwise/step_loss', loss.mean(), writer_step)
+
+        if writer and writer_step % 5000 == 0:
+            writer.add_text('environment/next_state', str(next_state), writer_step)
+            writer.add_text('environment/reward', str(reward), writer_step)
+            writer.add_text('environment/done', str(done), writer_step)
+
+            writer.add_text('predicted/next_state', str(pred_state), writer_step)
+            writer.add_text('predicted/reward', str(pred_reward), writer_step)
+            writer.add_text('predicted/done', str(pred_done), writer_step)
 
         return loss
 
     def train_batch(self, batch, global_steps, writer, gradient_clip):
-        state, action, reward, next_state, _ = batch
-        loss = self.loss(state, action, reward, next_state, writer, global_steps)
+        loss = self.loss(batch, writer, global_steps)
         self.zero_grad()
         loss.backward()
 
         if gradient_clip:
             torch.nn.utils.clip_grad_norm_(self.parameters(), gradient_clip)
-
-        if writer and global_steps % 1000000 == 0:
-            writer.add_figure('gradient_flow', plot_grad_flow(self.named_parameters()),
-                    global_steps)
 
         self.optimizer.step()
 
