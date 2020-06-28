@@ -39,14 +39,16 @@ class ModelNet(torch.nn.Module):
         self.body = torch.nn.Sequential(*layers)
 
         self.state_head = torch.nn.Linear(self.layer_sizes[-1][1], self.state_space.shape[0])
-        self.reward_head = torch.nn.Linear(self.layer_sizes[-1][1], 1)
-        self.done_head = torch.nn.Linear(self.layer_sizes[-1][1], 1)
+        self.reward_head = torch.nn.Linear(self.state_space.shape[0] * 2 + 1, 1)
+        self.done_head = torch.nn.Linear(self.state_space.shape[0] * 2 + 1, 1)
 
     def forward(self, state, action):
         state = torch.as_tensor(state, dtype=torch.float32).to(self.device)
         action = torch.as_tensor(action, dtype=torch.float32).unsqueeze(-1).to(self.device)
         output = self.body(torch.cat([state, action], dim=1))
-        return self.state_head(output), self.reward_head(output), self.done_head(output)
+        pred_state = self.state_head(output)
+        sasp_input = torch.cat([state, pred_state, action], dim=1)
+        return pred_state, self.reward_head(sasp_input), self.done_head(sasp_input)
 
     def loss(self, batch, writer=None, writer_step=None):
         state, action, reward, next_state, done = batch
