@@ -1,5 +1,6 @@
 import time
 import os
+import json
 
 import gym
 import torch
@@ -17,6 +18,28 @@ def get_action(env):
 if __name__ == "__main__":  
 
     args = model_based_parser.parse_args()
+
+    # Save path
+    if args.model_path:
+        os.makedirs(args.model_path, exist_ok=True)
+
+    if args.output_path:
+        os.makedirs(args.output_path, exist_ok=True)
+
+    # Logging via csv
+    if args.output_path:
+        base_filename = os.path.join(args.output_path, args.run_tag)
+        os.makedirs(base_filename, exist_ok=True)
+        log_filename = os.path.join(base_filename, 'loss.csv')
+        with open(log_filename, "w") as f:
+            f.write("episode,steps,reward,runtime\n")
+        with open(os.path.join(base_filename, 'params.json'), 'w') as fp:
+            param_dict = vars(args).copy()
+            del param_dict['output_path']
+            del param_dict['model_path']
+            json.dump(param_dict, fp)
+    else:
+        log_filename = None
 
     if not args.no_tensorboard:
         writer = SummaryWriter(comment=args.run_tag)
