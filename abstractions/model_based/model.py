@@ -40,7 +40,8 @@ class ModelNet(torch.nn.Module):
 
         self.state_head = torch.nn.Linear(self.layer_sizes[-1][1], self.state_space.shape[0])
         self.reward_head = torch.nn.Linear(self.state_space.shape[0] * 2 + 1, 1)
-        self.done_head = torch.nn.Linear(self.state_space.shape[0] * 2 + 1, 1)
+        self.done_head = torch.nn.Sequential(torch.nn.Linear(self.state_space.shape[0] * 2 + 1, 1),
+            torch.nn.Sigmoid())
 
     def forward(self, state, action):
         state = torch.as_tensor(state, dtype=torch.float32).to(self.device)
