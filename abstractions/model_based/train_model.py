@@ -1,11 +1,12 @@
 import time
+import os
 
 import gym
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from ..common.replay_buffer import ReplayBuffer
-from ..common.utils import model_based_parser
+from ..common.utils import model_based_parser, append_timestamp
 from .model import ModelNet
 
 def get_action(env):
@@ -75,3 +76,6 @@ if __name__ == "__main__":
         print(info_str)
 
         episode += 1
+
+    if args.model_path:
+        torch.save(model, append_timestamp(os.path.join(args.model_path, args.run_tag)) + ".pth")
