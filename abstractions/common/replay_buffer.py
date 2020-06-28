@@ -2,8 +2,7 @@ import numpy as np
 import random
 from collections import namedtuple
 
-Experience = namedtuple('Experience',
-                        ['state', 'action', 'reward', 'next_state', 'done'])
+Experience = namedtuple('Experience', ['state', 'action', 'reward', 'next_state', 'done'])
 
 # Adapted from OpenAI Baselines:
 # https://github.com/openai/baselines/blob/master/baselines/deepq/replay_buffer.py
