@@ -1,5 +1,22 @@
 import torch
 
+class MLP(torch.nn.Module):
+    def __init__(self, layer_sizes, activation=torch.nn.ReLU, final_activation=None):
+        super(MLP, self).__init__()
+        layer_shapes = list(zip(layer_sizes[:-1],layer_sizes[1:]))
+        layers = []
+        for shape in layer_shapes[:-1]:
+            layers.append(torch.nn.Linear(*shape))
+            if activation is not None:
+                layers.append(activation())
+        layers.append(torch.nn.Linear(*layer_shapes[-1]))
+        if final_activation is not None:
+            layers.append(final_activation())
+        self.layers = torch.nn.Sequential(*layers)
+
+    def forward(self, x):
+        return self.layers(x)
+
 class ModelNet(torch.nn.Module):
     def __init__(self, args, device, state_space, action_space):
         super(ModelNet, self).__init__()
@@ -9,16 +26,15 @@ class ModelNet(torch.nn.Module):
         self.device = device
 
         if args.model_shape == 'tiny':
-            self.layer_sizes = [(15,),]
+            self.layer_sizes = [15]
         elif args.model_shape == 'small':
-            self.layer_sizes = [(16,), (16, 16), (16, 16), (16, 16),]
+            self.layer_sizes = [16]*4
         elif args.model_shape == 'medium':
-            self.layer_sizes = [(128,), (128, 128), (128, 128), (128, 128),]
+            self.layer_sizes = [128]*4
         elif args.model_shape == 'large':
-            self.layer_sizes = [(1024,), (1024, 1024), (1024, 1024), (1024, 1024), (1024, 1024),]
+            self.layer_sizes = [1024]*5
         elif args.model_shape == 'giant':
-            self.layer_sizes = [(2048,), (2048, 2048), (2048, 2048), (2048, 2048), (2048, 2048),
-                                (2048, 2048), (2048, 2048),]
+            self.layer_sizes = [2048]*7
 
         self.build_model()
 
@@ -28,17 +44,13 @@ class ModelNet(torch.nn.Module):
         self.optimizer = torch.optim.Adam(self.parameters(), lr=args.lr)
 
     def build_model(self):
-        layers = [
-            torch.nn.Linear(self.state_space.shape[0] + 1, self.layer_sizes[0][0]),
-            torch.nn.ReLU(),
-        ]
-        for size in self.layer_sizes[1:]:
-            layer = [torch.nn.Linear(size[0], size[1]), torch.nn.ReLU()]
-            layers.extend(layer)
+        input_size = self.state_space.shape[0] + 1
+        self.body = MLP([input_size] + self.layer_sizes,
+                        activation=torch.nn.ReLU,
+                        final_activation=torch.nn.ReLU
+        )
 
-        self.body = torch.nn.Sequential(*layers)
-
-        self.state_head = torch.nn.Linear(self.layer_sizes[-1][1], self.state_space.shape[0])
+        self.state_head = torch.nn.Linear(self.layer_sizes[-1], self.state_space.shape[0])
         self.reward_head = torch.nn.Linear(self.state_space.shape[0] * 2 + 1, 1)
         self.done_head = torch.nn.Sequential(torch.nn.Linear(self.state_space.shape[0] * 2 + 1, 1),
             torch.nn.Sigmoid())
