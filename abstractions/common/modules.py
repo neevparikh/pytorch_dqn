@@ -21,6 +21,22 @@ class Reshape(torch.nn.Module):
     def forward(self, input):
         return input.view(*self.shape)
 
+class MLP(torch.nn.Module):
+    def __init__(self, layer_sizes, activation=torch.nn.ReLU, final_activation=None):
+        super(MLP, self).__init__()
+        layer_shapes = list(zip(layer_sizes[:-1],layer_sizes[1:]))
+        layers = []
+        for shape in layer_shapes[:-1]:
+            layers.append(torch.nn.Linear(*shape))
+            if activation is not None:
+                layers.append(activation())
+        layers.append(torch.nn.Linear(*layer_shapes[-1]))
+        if final_activation is not None:
+            layers.append(final_activation())
+        self.layers = torch.nn.Sequential(*layers)
+
+    def forward(self, x):
+        return self.layers(x)
 
 class InverseModel(torch.nn.Module):
     def __init__(self, args, feature_size, num_actions):
