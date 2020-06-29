@@ -6,7 +6,7 @@ import numpy as np
 
 from ..common.utils import conv2d_size_out, append_timestamp, build_phi_network, plot_grad_flow
 from ..common.replay_buffer import ReplayBuffer, Experience
-from ..common.modules import MarkovHead
+from ..common.modules import MarkovHead, MLP
 
 
 class FeatureNet(torch.nn.Module):
@@ -92,33 +92,27 @@ class DQN_MLP_model(DQN_Base_model):
         super(DQN_MLP_model, self).__init__(device, state_space, action_space, num_actions)
         # architecture
         if model_shape == 'tiny':
-            self.layer_sizes = [(15,),(15,)]
+            self.layer_sizes = [15]
         elif model_shape == 'small':
-            self.layer_sizes = [(16,), (16, 16), (16, 16), (16, 16), (16,)]
+            self.layer_sizes = [16]*4
         elif model_shape == 'medium':
-            self.layer_sizes = [(256,), (256, 256), (256, 256), (256, 256), (256,)]
+            self.layer_sizes = [256]*4
         elif model_shape == 'large':
-            self.layer_sizes = [(1024,), (1024, 1024), (1024, 1024), (1024, 1024), (1024, 1024),
-                    (1024,)]
+            self.layer_sizes = [1024]*5
         elif model_shape == 'giant':
-            self.layer_sizes = [(2048,), (2048, 2048), (2048, 2048), (2048, 2048), (2048, 2048),
-                                (2048, 2048), (2048, 2048), (2048,)]
+            self.layer_sizes = [2048]*7
 
         self.build_model()
 
     def build_model(self):
         # output should be in batchsize x num_actions
         # First layer takes in states
-        layers = [
-            torch.nn.Linear(self.state_space.shape[0], self.layer_sizes[0][0]), torch.nn.ReLU(),
-        ]
-        for size in self.layer_sizes[1:-1]:
-            layer = [torch.nn.Linear(size[0], size[1]), torch.nn.ReLU()]
-            layers.extend(layer)
-
-        layers.append(torch.nn.Linear(self.layer_sizes[-1][0], self.num_actions))
-
-        self.body = torch.nn.Sequential(*layers)
+        input_size = self.state_space.shape[0]
+        output_size = self.num_actions
+        self.body = MLP([input_size] + self.layer_sizes + [output_size],
+                        activation=torch.nn.ReLU,
+                        final_activation=None
+        )
 
         trainable_parameters = sum(p.numel() for p in self.parameters() if p.requires_grad)
         print(f"Number of trainable parameters: {trainable_parameters}")
