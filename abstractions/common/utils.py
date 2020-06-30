@@ -57,6 +57,8 @@ common_parser.add_argument('--num-frames', type=int, required=False, default=4,
         help='Number of frames to stack (CNN only)')
 common_parser.add_argument('--warmup-period', type=float_to_int, required=False, default=2000,
         help='Number of steps to act randomly and not train')
+common_parser.add_argument('--episodes-per-eval', type=int, default=10,
+        help='Number of episodes per evaluation (i.e. during test)')
 
 model_free_parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         parents=[common_parser], add_help=False)

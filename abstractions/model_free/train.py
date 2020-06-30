@@ -15,34 +15,36 @@ def test_policy(test_env, agent, episode, global_steps, writer, log_filename, ar
         # Reset environment
         cumulative_reward = 0
 
-        test_state = test_env.reset()
+        for i in range(args.episodes_per_eval):
+            test_state = test_env.reset()
 
-        test_action = agent.online.act(test_state, 0)
-        test_done = False
-        render = args.render and (episode % args.render_episodes == 0)
+            test_action = agent.online.act(test_state, 0)
+            test_done = False
+            render = args.render and (episode % args.render_episodes == 0)
 
-        # Test episode loop
-        while not test_done:
-            # Take action in env
-            if render:
-                test_env.render()
+            # Test episode loop
+            while not test_done:
+                # Take action in env
+                if render:
+                    test_env.render()
 
-            test_state, test_reward, test_done, _ = test_env.step(test_action)
+                test_state, test_reward, test_done, _ = test_env.step(test_action)
 
-            # passing in epsilon = 0
-            test_action = agent.online.act(test_state, agent.epsilon)
+                # passing in epsilon = 0
+                test_action = agent.online.act(test_state, agent.epsilon)
 
-            # Update reward
-            cumulative_reward += test_reward
+                # Update reward
+                cumulative_reward += test_reward
+        eval_reward = cumulative_reward/args.episodes_per_eval
 
-        print("Policy_reward for test:", cumulative_reward)
+        print("Policy_reward for test:", eval_reward)
 
         # Logging
         if not args.no_tensorboard:
-            writer.add_scalar('validation/policy_reward', cumulative_reward, global_steps)
+            writer.add_scalar('validation/policy_reward', eval_reward, global_steps)
         if log_filename:
             with open(log_filename, "a") as f:
-                f.write("{},{},{},".format(episode, global_steps, cumulative_reward))
+                f.write("{},{},{},".format(episode, global_steps, eval_reward))
 
 
 def episode_loop(env, test_env, agent, args, writer):
