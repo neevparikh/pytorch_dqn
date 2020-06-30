@@ -30,7 +30,7 @@ def test_policy(test_env, agent, episode, global_steps, writer, log_filename, ar
             test_state, test_reward, test_done, _ = test_env.step(test_action)
 
             # passing in epsilon = 0
-            test_action = agent.online.act(test_state, 0)
+            test_action = agent.online.act(test_state, agent.epsilon)
 
             # Update reward
             cumulative_reward += test_reward
@@ -78,7 +78,7 @@ def episode_loop(env, test_env, agent, args, writer):
         score = 0
         # Collect data from the environment
         while not done:
-            action = agent.online.act(state, agent.online.epsilon)
+            action = agent.online.act(state, agent.epsilon)
 
             next_state, reward, done, _ = env.step(action)
             score += reward

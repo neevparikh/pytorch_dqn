@@ -309,17 +309,15 @@ class DQN_agent:
 
     def set_epsilon(self, global_steps, writer=None):
         if global_steps < self.warmup_period:
-            self.online.epsilon = 1
-            self.target.epsilon = 1
+            self.epsilon = 1
         else:
             current_epsilon_decay = 1 - (1 - self.final_epsilon_value) * (
                 global_steps - self.warmup_period) / self.epsilon_decay_length
 
-            self.online.epsilon = max(self.final_epsilon_value, current_epsilon_decay)
-            self.target.epsilon = max(self.final_epsilon_value, current_epsilon_decay)
+            self.epsilon = max(self.final_epsilon_value, current_epsilon_decay)
 
         if writer:
-            writer.add_scalar('training/epsilon', self.online.epsilon, global_steps)
+            writer.add_scalar('training/epsilon', self.epsilon, global_steps)
 
     def load_checkpoint(self, checkpoint_path):
         checkpoint = torch.load(checkpoint_path)
