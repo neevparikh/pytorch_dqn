@@ -1,6 +1,7 @@
 import argparse
 from datetime import datetime
 import random
+import math
 
 from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
@@ -13,7 +14,6 @@ from atariari.benchmark.wrapper import AtariARIWrapper
 
 from .gym_wrappers import AtariPreprocess, MaxAndSkipEnv, FrameStack, ResetARI, \
         ObservationDictToInfo, ResizeObservation, IndexedObservation
-from .modules import Reshape
 
 float_to_int = lambda x: int(float(x))
 
@@ -51,7 +51,7 @@ common_parser.add_argument('--gradient-clip', type=float, required=False, defaul
 common_parser.add_argument('--reward-clip', type=float, required=False, default=0,
         help='How much to clip reward, i.e. [-rc, rc]; 0 is unclipped')
 common_parser.add_argument('--model-shape', type=str, default='medium',
-        choices=['tiny', 'small', 'medium', 'large', 'giant'], 
+        choices=['tiny', 'small', 'medium', 'large', 'giant'],
         help="Shape of architecture (mlp only)")
 common_parser.add_argument('--num-frames', type=int, required=False, default=4,
         help='Number of frames to stack (CNN only)')
@@ -60,107 +60,92 @@ common_parser.add_argument('--warmup-period', type=float_to_int, required=False,
 common_parser.add_argument('--episodes-per-eval', type=int, default=10,
         help='Number of episodes per evaluation (i.e. during test)')
 
-model_free_parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+dqn_parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         parents=[common_parser], add_help=False)
-model_free_parser.add_argument('--ari', action='store_true', required=False,
+dqn_parser.add_argument('--ari', action='store_true', required=False,
         help='Whether to use annotated RAM')
-model_free_parser.add_argument('--model-type', type=str, required=True, default='mlp',
+dqn_parser.add_argument('--model-type', type=str, required=True, default='mlp',
         choices=['cnn', 'mlp'],
         help="Type of architecture")
-model_free_parser.add_argument('--load-checkpoint-path', type=str, required=False,
+dqn_parser.add_argument('--load-checkpoint-path', type=str, required=False,
         help='Path to checkpoint')
-model_free_parser.add_argument('--no-atari', action='store_true', required=False,
+dqn_parser.add_argument('--no-atari', action='store_true', required=False,
         help='Do not use atari preprocessing')
-model_free_parser.add_argument('--checkpoint-steps', type=float_to_int, required=False,
-        default=20000,
+dqn_parser.add_argument('--checkpoint-steps', type=float_to_int, required=False, default=20000,
         help='Checkpoint every so often')
-model_free_parser.add_argument('--test-policy-steps', type=float_to_int, required=False,
-        default=1000,
+dqn_parser.add_argument('--test-policy-steps', type=float_to_int, required=False, default=1000,
         help='Policy is tested every these many steps')
-model_free_parser.add_argument('--epsilon-decay-length', type=float_to_int, required=False,
-        default=5000,
+dqn_parser.add_argument('--epsilon-decay-length', type=float_to_int, required=False, default=5000,
         help='Number of steps to linearly decay epsilon')
-model_free_parser.add_argument('--final-epsilon-value', type=float, required=False, default=0.05,
+dqn_parser.add_argument('--final-epsilon-value', type=float, required=False, default=0.05,
         help='Final epsilon value, between 0 and 1')
-model_free_parser.add_argument('--target-moving-average', type=float, required=False, default=0.01,
+dqn_parser.add_argument('--target-moving-average', type=float, required=False, default=0.01,
         help='EMA parameter for target network')
-model_free_parser.add_argument('--vanilla-DQN', action='store_true', required=False,
+dqn_parser.add_argument('--vanilla-DQN', action='store_true', required=False,
         help='Use the vanilla dqn update instead of double DQN')
+
+sac_parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        parents=[common_parser], add_help=False)
+sac_parser.add_argument('--policy', default="Gaussian", choices=["Gaussian", "Deterministic"],
+        help='Policy Type')
+sac_parser.add_argument('--target-moving-average', type=float, required=False, default=0.005,
+        help='EMA parameter for target network')
+sac_parser.add_argument('--alpha', type=float, default=0.2,
+        help='Temperature parameter α determines the relative importance of the entropy term \
+                against the reward (default: 0.2)')
+sac_parser.add_argument('--automatic-entropy-tuning', action='store_true',
+        help='Automaically adjust α (default: False)')
+sac_parser.add_argument('--hidden-size', type=int, default=256,
+        help='hidden size (default: 256)')
+sac_parser.add_argument('--model-type', type=str, default='mlp', choices=['mlp'],
+        help="Type of architecture")
+sac_parser.add_argument('--updates-per-step', type=int, default=1,
+        help='model updates per simulator step (default: 1)')
+sac_parser.add_argument('--target-update-interval', type=int, default=1,
+        help='Value target update per no. of updates per step (default: 1)')
+sac_parser.add_argument('--test-policy-steps', type=float_to_int, required=False, default=1000,
+        help='Policy is tested every these many steps')
+sac_parser.add_argument('--no-atari', action='store_true', required=False,
+        help='Do not use atari preprocessing')
+sac_parser.add_argument('--ari', action='store_true', required=False,
+        help='Whether to use annotated RAM')
 
 model_based_parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         parents=[common_parser], add_help=False)
+
+## DQN utils ##
 
 def init_weights(m):
     if type(m) == torch.nn.Linear:
         torch.nn.init.uniform_(m.weight, -0.1, 0.1)
         torch.nn.init.uniform_(m.bias, -1, 1)
 
-
-# Adapted from pytorch tutorials:
-# https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
 def conv2d_size_out(size, kernel_size, stride):
+    ''' Adapted from pytorch tutorials: 
+        https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html 
+    '''
     return ((size[0] - (kernel_size[0] - 1) - 1) // stride + 1,
             (size[1] - (kernel_size[1] - 1) - 1) // stride + 1)
-
 
 def deque_to_tensor(last_num_frames):
     """ Convert deque of n frames to tensor """
     return torch.cat(list(last_num_frames), dim=0)
 
-def build_phi_network(args, input_shape):
-    if args.model_type == 'cnn':
-        final_size = conv2d_size_out(input_shape, (8, 8), 4)
-        final_size = conv2d_size_out(final_size, (4, 4), 2)
-        final_size = conv2d_size_out(final_size, (3, 3), 1)
-        output_size = final_size[0] * final_size[1] * 64
-        phi = torch.nn.Sequential(*[
-            torch.nn.Conv2d(args.num_frames, 32, kernel_size=(8, 8), stride=4),
-            torch.nn.ReLU(),
-            torch.nn.Conv2d(32, 64, kernel_size=(4, 4), stride=2),
-            torch.nn.ReLU(),
-            torch.nn.Conv2d(64, 64, kernel_size=(3, 3), stride=1),
-            torch.nn.ReLU(),
-            Reshape(-1, output_size),
-        ])
-    elif args.model_type == 'mlp':
-        if args.model_shape == 'small':
-            layer_sizes = [(64, 64), (64, 64)]
-        elif args.model_shape == 'medium':
-            layer_sizes = [(256, 256), (256, 256), (256, 256)]
-        elif args.model_shape == 'large':
-            layer_sizes = [(1024, 1024), (1024, 1024), (1024, 1024), (1024, 1024)]
-        elif args.model_shape == 'giant':
-            layer_sizes = [(2048, 2048), (2048, 2048), (2048, 2048), (2048, 2048),
-                                (2048, 2048), (2048, 2048)]
-        else:
-            raise ValueError("Unrecognized model_shape: ", args.model_shape)
-        layers = [
-            torch.nn.Linear(input_shape[0], layer_sizes[0][0]), torch.nn.ReLU()
-        ]
-        for size in layer_sizes:
-            layer = [torch.nn.Linear(size[0], size[1]), torch.nn.ReLU()]
-            layers.extend(layer)
-        output_size = layer_sizes[-1][1]
-    else:
-        raise ValueError("Unrecognized model_type: ", args.model_type)
-
-    return phi, output_size
-
-
-# Thanks to RoshanRane - Pytorch forums
-# (https://discuss.pytorch.org/t/check-gradient-flow-in-network/15063/10)
-# Dec 2018
-# Example: Gradient flow in network
-# writer.add_figure('training/gradient_flow',
-#                   plot_grad_flow(agent.online.named_parameters(),
-#                                  episode),
-#                   global_step=episode)
 def plot_grad_flow(named_parameters):
-    '''Plots the gradients flowing through different layers in the net during training.
+    '''
+    Thanks to RoshanRane - Pytorch forums (Dec 2018)
+        - (https://discuss.pytorch.org/t/check-gradient-flow-in-network/15063/10)
+
+    Plots the gradients flowing through different layers in the net during training.
     Can be used for checking for possible gradient vanishing / exploding problems.
     
     Usage: Plug this function in Trainer class after loss.backwards() as 
-    "plot_grad_flow(self.model.named_parameters())" to visualize the gradient flow'''
+    "plot_grad_flow(self.model.named_parameters())" to visualize the gradient flow
+
+    writer.add_figure('training/gradient_flow', plot_grad_flow(agent.online.named_parameters(), 
+        episode), global_step=episode)
+
+    '''
     plt.clf()
     ave_grads = []
     max_grads = []
@@ -209,11 +194,9 @@ def make_atari(env, num_frames):
     """ Wrap env in atari processed env """
     return FrameStack(MaxAndSkipEnv(AtariPreprocess(env), 4), num_frames)
 
-
 def make_ari(env):
     """ Wrap env in reset to match observation """
     return ResetARI(AtariARIWrapper(env))
-
 
 def make_visual(env, shape):
     """ Wrap env to return pixel observations """
@@ -223,13 +206,12 @@ def make_visual(env, shape):
     env = ResizeObservation(env, shape)
     return env
 
-
 def initialize_environment(args):
     # Initialize environment
     visual_cartpole_shape = (80, 120)
     if args.env == "VisualCartPole-v0":
         from pyvirtualdisplay import Display
-        display = Display(visible=False, backend='xvfb').start()
+        _ = Display(visible=False, backend='xvfb').start()
         env = gym.make("CartPole-v0")
         test_env = gym.make("CartPole-v0")
         env.reset()
@@ -238,7 +220,7 @@ def initialize_environment(args):
         test_env = make_visual(env, visual_cartpole_shape)
     elif args.env == "VisualCartPole-v1":
         from pyvirtualdisplay import Display
-        display = Display(visible=False, backend='xvfb').start()
+        _ = Display(visible=False, backend='xvfb').start()
         env = gym.make("CartPole-v1")
         test_env = gym.make("CartPole-v1")
         env.reset()
