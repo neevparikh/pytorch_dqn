@@ -44,6 +44,48 @@ class MLP(torch.nn.Module):
     def forward(self, x):
         return self.layers(x)
 
+
+## Markov Abstraction ##
+
+
+def build_phi_network(args, input_shape):
+    if args.model_type == 'cnn':
+        final_size = conv2d_size_out(input_shape, (8, 8), 4)
+        final_size = conv2d_size_out(final_size, (4, 4), 2)
+        final_size = conv2d_size_out(final_size, (3, 3), 1)
+        output_size = final_size[0] * final_size[1] * 64
+        phi = torch.nn.Sequential(*[
+            torch.nn.Conv2d(args.num_frames, 32, kernel_size=(8, 8), stride=4),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(32, 64, kernel_size=(4, 4), stride=2),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(64, 64, kernel_size=(3, 3), stride=1),
+            torch.nn.ReLU(),
+            Reshape(-1, output_size),
+        ])
+    elif args.model_type == 'mlp':
+        if args.model_shape == 'small':
+            layer_sizes = [(64, 64), (64, 64)]
+        elif args.model_shape == 'medium':
+            layer_sizes = [(256, 256), (256, 256), (256, 256)]
+        elif args.model_shape == 'large':
+            layer_sizes = [(1024, 1024), (1024, 1024), (1024, 1024), (1024, 1024)]
+        elif args.model_shape == 'giant':
+            layer_sizes = [(2048, 2048), (2048, 2048), (2048, 2048), (2048, 2048), (2048, 2048),
+                           (2048, 2048)]
+        else:
+            raise ValueError("Unrecognized model_shape: ", args.model_shape)
+        layers = [torch.nn.Linear(input_shape[0], layer_sizes[0][0]), torch.nn.ReLU()]
+        for size in layer_sizes:
+            layer = [torch.nn.Linear(size[0], size[1]), torch.nn.ReLU()]
+            layers.extend(layer)
+        output_size = layer_sizes[-1][1]
+    else:
+        raise ValueError("Unrecognized model_type: ", args.model_type)
+
+    return phi, output_size
+
+
 class InverseModel(torch.nn.Module):
     def __init__(self, args, feature_size, num_actions):
         super(InverseModel, self).__init__()
