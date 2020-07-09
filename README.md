@@ -1,5 +1,9 @@
-# Pytorch DQN Implementation
-Implementation of DQN (Mnih 2015) in Pytorch.
+# Compact Abstractions
+Implementation of DQN in Pytorch -- https://github.com/neevparikh/pytorch_dqn
+Implementation of SAC in Pytorch -- https://github.com/pranz24/pytorch-soft-actor-critic
+Implementation of PPO in Pytorch -- https://github.com/nikhilbarhate99/PPO-PyTorch
+
+## Usage
 
 Please create a virtualenv using the following method:
 
