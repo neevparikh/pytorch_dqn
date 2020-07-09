@@ -20,13 +20,17 @@ class Reshape(torch.nn.Module):
         s += '{}'.format(self.shape)
         return s
 
-    def forward(self, input):
-        return input.view(*self.shape)
+    def forward(self, x):
+        return x.view(*self.shape)
+
+
+## DQN ##
+
 
 class MLP(torch.nn.Module):
     def __init__(self, layer_sizes, activation=torch.nn.ReLU, final_activation=None):
         super(MLP, self).__init__()
-        layer_shapes = list(zip(layer_sizes[:-1],layer_sizes[1:]))
+        layer_shapes = list(zip(layer_sizes[:-1], layer_sizes[1:]))
         layers = []
         for shape in layer_shapes[:-1]:
             layers.append(torch.nn.Linear(*shape))
