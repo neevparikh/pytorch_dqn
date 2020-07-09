@@ -4,9 +4,9 @@ import random
 import torch
 import numpy as np
 
-from ..common.utils import conv2d_size_out, append_timestamp, build_phi_network, plot_grad_flow
-from ..common.replay_buffer import ReplayBuffer, Experience
-from ..common.modules import MarkovHead, MLP
+from ...common.utils import conv2d_size_out, append_timestamp, plot_grad_flow
+from ...common.replay_buffer import ReplayBuffer, Experience
+from ...common.modules import MarkovHead, MLP, build_phi_network
 
 
 class FeatureNet(torch.nn.Module):
@@ -21,7 +21,7 @@ class FeatureNet(torch.nn.Module):
         return self.phi(x)
 
     def loss(self, batch):
-        states, actions, rewards, next_states, dones = batch
+        states, actions, _, next_states, _ = batch
         markov_loss = self.markov_head.compute_markov_loss(
             z0=self.phi(torch.as_tensor(states.astype(np.float32))),
             z1=self.phi(torch.as_tensor(next_states.astype(np.float32))),

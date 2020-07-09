@@ -4,9 +4,10 @@ import json
 
 import numpy as np
 import torch
+import gym
 from torch.utils.tensorboard import SummaryWriter
 
-from ..common.utils import model_free_parser, append_timestamp, reset_seeds, initialize_environment
+from ...common.utils import dqn_parser, append_timestamp, reset_seeds, initialize_environment
 from .model import DQN_agent
 
 
@@ -15,23 +16,21 @@ def test_policy(test_env, agent, episode, global_steps, writer, log_filename, ar
         # Reset environment
         cumulative_reward = 0
 
-        for i in range(args.episodes_per_eval):
+        for _ in range(args.episodes_per_eval):
             test_state = test_env.reset()
 
-            test_action = agent.online.act(test_state, 0)
             test_done = False
             render = args.render and (episode % args.render_episodes == 0)
 
             # Test episode loop
             while not test_done:
+                test_action = agent.online.act(test_state, agent.epsilon)
+
                 # Take action in env
                 if render:
                     test_env.render()
 
                 test_state, test_reward, test_done, _ = test_env.step(test_action)
-
-                # passing in epsilon = 0
-                test_action = agent.online.act(test_state, agent.epsilon)
 
                 # Update reward
                 cumulative_reward += test_reward
@@ -121,13 +120,16 @@ def episode_loop(env, test_env, agent, args, writer):
         episode += 1
 
 
-args = model_free_parser.parse_args()
+args = dqn_parser.parse_args()
 
 # Set seeds
 reset_seeds(args.seed)
 
 # Initialize envs
 env, test_env = initialize_environment(args)
+
+if type(env.action_space) != gym.spaces.Discrete:
+    raise NotImplementedError("DQN for continuous action_spaces hasn't been implemented") 
 
 # Check if GPU can be used and was asked for
 if args.gpu and torch.cuda.is_available():
