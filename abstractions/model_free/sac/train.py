@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from .model import SAC
 from ...common.replay_buffer import ReplayBuffer
-from ...common.utils import sac_parser, initialize_environment, reset_seeds, append_timestamp
+from ...common.utils import sac_parser, initialize_environment, reset_seeds
 
 
 def test_policy(test_env, agent, episode, global_steps, writer, log_filename, args):
@@ -176,5 +176,5 @@ episode_loop(env, test_env, agent, replay_buffer, args, writer)
 env.close()
 test_env.close()
 
-if args.model_path:
-    torch.save(agent.online, append_timestamp(os.path.join(args.model_path, args.run_tag)) + ".pth")
+# if args.model_path:
+#     torch.save(agent.online, append_timestamp(os.path.join(args.model_path, args.run_tag)) + ".pth")
