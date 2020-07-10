@@ -115,7 +115,8 @@ class DQN_MLP_model(DQN_Base_model):
         )
 
         trainable_parameters = sum(p.numel() for p in self.parameters() if p.requires_grad)
-        print(f"Number of trainable parameters: {trainable_parameters}")
+        print(repr(self))
+        print("Number of trainable parameters: {}".format(trainable_parameters))
 
     def forward(self, state):
         q_value = self.body(state)
@@ -167,7 +168,8 @@ class DQN_CNN_model(DQN_Base_model):
         ])
 
         trainable_parameters = sum(p.numel() for p in self.parameters() if p.requires_grad)
-        print(f"Number of trainable parameters: {trainable_parameters}")
+        print(repr(self))
+        print("Number of trainable parameters: {}".format(trainable_parameters))
 
     def forward(self, state):
         cnn_output = self.body(state)
