@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from .model import SAC
 from ...common.replay_buffer import ReplayBuffer
-from ...common.utils import sac_parser, initialize_environment, reset_seeds, append_timestamp
+from ...common.utils import sac_parser, initialize_environment, reset_seeds
 
 
 def test_policy(test_env, agent, episode, global_steps, writer, log_filename, args):
@@ -25,7 +25,7 @@ def test_policy(test_env, agent, episode, global_steps, writer, log_filename, ar
 
             # Test episode loop
             while not test_done:
-                test_action = agent.select_action(test_state, evaluate=True)
+                test_action = agent.act(test_state, evaluate=True)
 
                 # Take action in env
                 if render:
@@ -80,7 +80,7 @@ def episode_loop(env, test_env, agent, replay_buffer, args, writer):
             if can_train:
                 action = env.action_space.sample()
             else:
-                action = agent.select_action(state)
+                action = agent.act(state)
             
             if can_train:
                 for _ in range(args.updates_per_step):
@@ -105,7 +105,9 @@ def episode_loop(env, test_env, agent, replay_buffer, args, writer):
             else:
                 clipped_reward = reward
 
-            mask = 1 if steps == env._max_episode_steps else not done # pylint: disable=protected-access
+            # mask = 1 if steps == env._max_episode_steps else not done
+            # pylint: disable=protected-access
+            mask = not done
 
             # Store in replay buffer
             replay_buffer.append(state, action, clipped_reward, next_state, int(mask))
@@ -140,7 +142,7 @@ else:
     device = torch.device('cpu')
 
 # Initialize model
-agent = SAC(env.observation_space.shape[0], env.action_space, device, args)
+agent = SAC(env.observation_space.shape, env.action_space, device, args)
 
 # Save path
 if args.model_path:
@@ -176,5 +178,5 @@ episode_loop(env, test_env, agent, replay_buffer, args, writer)
 env.close()
 test_env.close()
 
-if args.model_path:
-    torch.save(agent.online, append_timestamp(os.path.join(args.model_path, args.run_tag)) + ".pth")
+# if args.model_path:
+#     torch.save(agent.online, append_timestamp(os.path.join(args.model_path, args.run_tag)) + ".pth")
