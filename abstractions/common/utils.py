@@ -209,6 +209,7 @@ def make_visual(env, shape):
 def initialize_environment(args):
     # Initialize environment
     visual_cartpole_shape = (80, 120)
+    visual_pendulum_shape = (80, 120)
     if args.env == "VisualCartPole-v0":
         from pyvirtualdisplay import Display
         _ = Display(visible=False, backend='xvfb').start()
@@ -227,6 +228,15 @@ def initialize_environment(args):
         test_env.reset()
         env = make_visual(env, visual_cartpole_shape)
         test_env = make_visual(env, visual_cartpole_shape)
+    elif args.env == "VisualPendulum-v0":
+        from pyvirtualdisplay import Display
+        _ = Display(visible=False, backend='xvfb').start()
+        env = gym.make("Pendulum-v0")
+        test_env = gym.make("Pendulum-v0")
+        env.reset()
+        test_env.reset()
+        env = make_visual(env, visual_pendulum_shape)
+        test_env = make_visual(env, visual_pendulum_shape)
     elif args.env == "CartPole-PosAngle-v0":
         env = IndexedObservation(gym.make("CartPole-v0"), [0,1])
         test_env = IndexedObservation(gym.make("CartPole-v0"), [0,1])
