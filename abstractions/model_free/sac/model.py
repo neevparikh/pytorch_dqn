@@ -9,24 +9,31 @@ from ...common.replay_buffer import Experience
 
 
 class SAC:
-    def __init__(self, num_inputs, action_space, device, args):
+    def __init__(self, input_shape, action_space, device, args):
 
         self.gamma = args.gamma
         self.tau = args.target_moving_average
         self.alpha = args.alpha
 
+        self.model_type = args.model_type
         self.policy_type = args.policy
         self.target_update_interval = args.target_update_interval
         self.automatic_entropy_tuning = args.automatic_entropy_tuning
 
         self.device = device
 
-        self.critic = QNetwork(num_inputs, action_space.shape[0],
-                               args.hidden_size).to(device=self.device)
+        self.critic = QNetwork(input_shape,
+                               action_space.shape[0],
+                               args.hidden_size,
+                               args.model_type,
+                               args.num_frames).to(device=self.device)
         self.critic_optim = torch.optim.Adam(self.critic.parameters(), lr=args.lr)
 
-        self.critic_target = QNetwork(num_inputs, action_space.shape[0],
-                                      args.hidden_size).to(self.device)
+        self.critic_target = QNetwork(input_shape,
+                                      action_space.shape[0],
+                                      args.hidden_size,
+                                      args.model_type,
+                                      args.num_frames).to(self.device)
         hard_update(self.critic_target, self.critic)
 
         if self.policy_type == "Gaussian":
@@ -37,18 +44,22 @@ class SAC:
                 self.log_alpha = torch.zeros(1, requires_grad=True, device=self.device)
                 self.alpha_optim = torch.optim.Adam([self.log_alpha], lr=args.lr)
 
-            self.policy = GaussianPolicy(num_inputs,
+            self.policy = GaussianPolicy(input_shape,
                                          action_space.shape[0],
                                          args.hidden_size,
+                                         args.model_type,
+                                         args.num_frames,
                                          action_space).to(self.device)
             self.policy_optim = torch.optim.Adam(self.policy.parameters(), lr=args.lr)
 
         else:
             self.alpha = 0
             self.automatic_entropy_tuning = False
-            self.policy = DeterministicPolicy(num_inputs,
+            self.policy = DeterministicPolicy(input_shape,
                                               action_space.shape[0],
                                               args.hidden_size,
+                                              args.model_type,
+                                              args.num_frames,
                                               action_space).to(self.device)
             self.policy_optim = torch.optim.Adam(self.policy.parameters(), lr=args.lr)
 
