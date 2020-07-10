@@ -97,7 +97,7 @@ sac_parser.add_argument('--automatic-entropy-tuning', action='store_true',
         help='Automaically adjust α (default: False)')
 sac_parser.add_argument('--hidden-size', type=int, default=256,
         help='hidden size (default: 256)')
-sac_parser.add_argument('--model-type', type=str, default='mlp', choices=['mlp'],
+sac_parser.add_argument('--model-type', type=str, default='mlp', choices=['mlp', 'cnn'],
         help="Type of architecture")
 sac_parser.add_argument('--updates-per-step', type=int, default=1,
         help='model updates per simulator step (default: 1)')

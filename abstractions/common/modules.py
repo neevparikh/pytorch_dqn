@@ -168,45 +168,120 @@ class ValueNetwork(torch.nn.Module):
 
 
 class QNetwork(torch.nn.Module):
-    def __init__(self, num_inputs, num_actions, hidden_dim):
+    def __init__(self, input_shape, num_actions, hidden_dim, model_type, num_frames=None):
         super(QNetwork, self).__init__()
 
-        # Q1 architecture
-        self.linear1 = torch.nn.Linear(num_inputs + num_actions, hidden_dim)
-        self.linear2 = torch.nn.Linear(hidden_dim, hidden_dim)
-        self.linear3 = torch.nn.Linear(hidden_dim, 1)
+        if len(input_shape) > 2:
+            input_shape = input_shape[1:]
 
-        # Q2 architecture
-        self.linear4 = torch.nn.Linear(num_inputs + num_actions, hidden_dim)
-        self.linear5 = torch.nn.Linear(hidden_dim, hidden_dim)
-        self.linear6 = torch.nn.Linear(hidden_dim, 1)
+        self.model_type = model_type
+        # Q1 architecture
+        if model_type == 'mlp':
+            assert len(input_shape) == 1, "Cannot use {} as input".format(input_shape)
+            self.q1 = torch.nn.Sequential(torch.nn.Linear(input_shape[0] + num_actions, hidden_dim),
+                                          torch.nn.ReLU(),
+                                          torch.nn.Linear(hidden_dim, hidden_dim),
+                                          torch.nn.ReLU(),
+                                          torch.nn.Linear(hidden_dim, 1))
+            self.q2 = torch.nn.Sequential(torch.nn.Linear(input_shape[0] + num_actions, hidden_dim),
+                                          torch.nn.ReLU(),
+                                          torch.nn.Linear(hidden_dim, hidden_dim),
+                                          torch.nn.ReLU(),
+                                          torch.nn.Linear(hidden_dim, 1))
+        elif model_type == 'cnn':
+            assert num_frames is not None, "Must provide num frames"
+
+            final_size = conv2d_size_out(input_shape, (8, 8), 4)
+            final_size = conv2d_size_out(final_size, (4, 4), 2)
+            final_size = conv2d_size_out(final_size, (3, 3), 1)
+            output_size = final_size[0] * final_size[1] * 64
+
+            self.body1 = torch.nn.Sequential(
+                torch.nn.Conv2d(num_frames, 32, kernel_size=(8, 8), stride=4),
+                torch.nn.ReLU(),
+                torch.nn.Conv2d(32, 64, kernel_size=(4, 4), stride=2),
+                torch.nn.ReLU(),
+                torch.nn.Conv2d(64, 64, kernel_size=(3, 3), stride=1),
+                torch.nn.ReLU(),
+                Reshape(-1, output_size))
+            self.q1 = torch.nn.Sequential(
+                torch.nn.Linear(output_size + num_actions, hidden_dim),
+                torch.nn.ReLU(),
+                torch.nn.Linear(hidden_dim, 1))
+
+            self.body2 = torch.nn.Sequential(
+                torch.nn.Conv2d(num_frames, 32, kernel_size=(8, 8), stride=4),
+                torch.nn.ReLU(),
+                torch.nn.Conv2d(32, 64, kernel_size=(4, 4), stride=2),
+                torch.nn.ReLU(),
+                torch.nn.Conv2d(64, 64, kernel_size=(3, 3), stride=1),
+                torch.nn.ReLU(),
+                Reshape(-1, output_size))
+            self.q2 = torch.nn.Sequential(
+                torch.nn.Linear(output_size + num_actions, hidden_dim),
+                torch.nn.ReLU(),
+                torch.nn.Linear(hidden_dim, 1))
 
         self.apply(weights_init_)
 
+        trainable_parameters = sum(p.numel() for p in self.parameters() if p.requires_grad)
+        print(repr(self))
+        print("Number of trainable parameters: {}".format(trainable_parameters))
+
     def forward(self, state, action):
-        xu = torch.cat([state, action], 1)
-
-        x1 = torch.nn.functional.relu(self.linear1(xu))
-        x1 = torch.nn.functional.relu(self.linear2(x1))
-        x1 = self.linear3(x1)
-
-        x2 = torch.nn.functional.relu(self.linear4(xu))
-        x2 = torch.nn.functional.relu(self.linear5(x2))
-        x2 = self.linear6(x2)
-
+        if self.model_type == 'cnn':
+            x1 = self.q1(torch.cat([self.body1(state), action], 1))
+            x2 = self.q2(torch.cat([self.body2(state), action], 1))
+        elif self.model_type == 'mlp':
+            xu = torch.cat([state, action], 1)
+            x1 = self.q1(xu)
+            x2 = self.q2(xu)
         return x1, x2
 
 
 class GaussianPolicy(torch.nn.Module):
-    def __init__(self, num_inputs, num_actions, hidden_dim, action_space=None):
+    def __init__(self,
+                 input_shape,
+                 num_actions,
+                 hidden_dim,
+                 model_type,
+                 num_frames=None,
+                 action_space=None):
         super(GaussianPolicy, self).__init__()
 
-        self.linear1 = torch.nn.Linear(num_inputs, hidden_dim)
-        self.linear2 = torch.nn.Linear(hidden_dim, hidden_dim)
+        if len(input_shape) > 2:
+            input_shape = input_shape[1:]
+
+        if model_type == 'mlp':
+            assert len(input_shape) == 1, "Cannot use {} as input".format(input_shape)
+            self.body = torch.nn.Sequential(torch.nn.Linear(input_shape[0], hidden_dim),
+                                            torch.nn.ReLU(),
+                                            torch.nn.Linear(hidden_dim, hidden_dim),
+                                            torch.nn.ReLU())
+
+        elif model_type == 'cnn':
+            assert num_frames is not None, "Must provide num frames"
+
+            final_size = conv2d_size_out(input_shape, (8, 8), 4)
+            final_size = conv2d_size_out(final_size, (4, 4), 2)
+            final_size = conv2d_size_out(final_size, (3, 3), 1)
+            output_size = final_size[0] * final_size[1] * 64
+
+            self.body = torch.nn.Sequential(
+                torch.nn.Conv2d(num_frames, 32, kernel_size=(8, 8), stride=4),
+                torch.nn.ReLU(),
+                torch.nn.Conv2d(32, 64, kernel_size=(4, 4), stride=2),
+                torch.nn.ReLU(),
+                torch.nn.Conv2d(64, 64, kernel_size=(3, 3), stride=1),
+                torch.nn.ReLU(),
+                Reshape(-1, output_size),
+                torch.nn.Linear(output_size, hidden_dim),
+                torch.nn.ReLU(),
+                torch.nn.Linear(hidden_dim, hidden_dim),
+                torch.nn.ReLU())
 
         self.mean_linear = torch.nn.Linear(hidden_dim, num_actions)
         self.log_std_linear = torch.nn.Linear(hidden_dim, num_actions)
-
         self.apply(weights_init_)
 
         # action rescaling
@@ -218,8 +293,7 @@ class GaussianPolicy(torch.nn.Module):
             self.action_bias = torch.FloatTensor((action_space.high + action_space.low) / 2.)
 
     def forward(self, state):
-        x = torch.nn.functional.relu(self.linear1(state))
-        x = torch.nn.functional.relu(self.linear2(x))
+        x = self.body(state)
         mean = self.mean_linear(x)
         log_std = self.log_std_linear(x)
         log_std = torch.clamp(log_std, min=LOG_SIG_MIN, max=LOG_SIG_MAX)
@@ -246,10 +320,45 @@ class GaussianPolicy(torch.nn.Module):
 
 
 class DeterministicPolicy(torch.nn.Module):
-    def __init__(self, num_inputs, num_actions, hidden_dim, action_space=None):
+    def __init__(self,
+                 input_shape,
+                 num_actions,
+                 hidden_dim,
+                 model_type,
+                 num_frames=None,
+                 action_space=None):
         super(DeterministicPolicy, self).__init__()
-        self.linear1 = torch.nn.Linear(num_inputs, hidden_dim)
-        self.linear2 = torch.nn.Linear(hidden_dim, hidden_dim)
+
+        if len(input_shape) > 2:
+            input_shape = input_shape[1:]
+
+        if model_type == 'mlp':
+            assert len(input_shape) == 1, "Cannot use {} as input".format(input_shape)
+            self.body = torch.nn.Sequential(torch.nn.Linear(input_shape[0], hidden_dim),
+                                            torch.nn.ReLU(),
+                                            torch.nn.Linear(hidden_dim, hidden_dim),
+                                            torch.nn.ReLU())
+
+        elif model_type == 'cnn':
+            assert num_frames is not None, "Must provide num frames"
+
+            final_size = conv2d_size_out(input_shape, (8, 8), 4)
+            final_size = conv2d_size_out(final_size, (4, 4), 2)
+            final_size = conv2d_size_out(final_size, (3, 3), 1)
+            output_size = final_size[0] * final_size[1] * 64
+
+            self.body = torch.nn.Sequential(
+                torch.nn.Conv2d(num_frames, 32, kernel_size=(8, 8), stride=4),
+                torch.nn.ReLU(),
+                torch.nn.Conv2d(32, 64, kernel_size=(4, 4), stride=2),
+                torch.nn.ReLU(),
+                torch.nn.Conv2d(64, 64, kernel_size=(3, 3), stride=1),
+                torch.nn.ReLU(),
+                Reshape(-1, output_size),
+                torch.nn.Linear(output_size, hidden_dim),
+                torch.nn.ReLU(),
+                torch.nn.Linear(hidden_dim, hidden_dim),
+                torch.nn.ReLU())
 
         self.mean = torch.nn.Linear(hidden_dim, num_actions)
         self.noise = torch.Tensor(num_actions)
@@ -265,8 +374,7 @@ class DeterministicPolicy(torch.nn.Module):
             self.action_bias = torch.FloatTensor((action_space.high + action_space.low) / 2.)
 
     def forward(self, state):
-        x = torch.nn.functional.relu(self.linear1(state))
-        x = torch.nn.functional.relu(self.linear2(x))
+        x = self.body(state)
         mean = torch.tanh(self.mean(x)) * self.action_scale + self.action_bias
         return mean
 
