@@ -105,7 +105,9 @@ def episode_loop(env, test_env, agent, replay_buffer, args, writer):
             else:
                 clipped_reward = reward
 
-            mask = 1 if steps == env._max_episode_steps else not done # pylint: disable=protected-access
+            # mask = 1 if steps == env._max_episode_steps else not done
+            # pylint: disable=protected-access
+            mask = not done
 
             # Store in replay buffer
             replay_buffer.append(state, action, clipped_reward, next_state, int(mask))
@@ -140,7 +142,7 @@ else:
     device = torch.device('cpu')
 
 # Initialize model
-agent = SAC(env.observation_space.shape[0], env.action_space, device, args)
+agent = SAC(env.observation_space.shape, env.action_space, device, args)
 
 # Save path
 if args.model_path:
