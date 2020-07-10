@@ -25,7 +25,7 @@ def test_policy(test_env, agent, episode, global_steps, writer, log_filename, ar
 
             # Test episode loop
             while not test_done:
-                test_action = agent.select_action(test_state, evaluate=True)
+                test_action = agent.act(test_state, evaluate=True)
 
                 # Take action in env
                 if render:
@@ -80,7 +80,7 @@ def episode_loop(env, test_env, agent, replay_buffer, args, writer):
             if can_train:
                 action = env.action_space.sample()
             else:
-                action = agent.select_action(state)
+                action = agent.act(state)
             
             if can_train:
                 for _ in range(args.updates_per_step):

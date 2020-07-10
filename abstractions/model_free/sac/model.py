@@ -63,8 +63,9 @@ class SAC:
                                               action_space).to(self.device)
             self.policy_optim = torch.optim.Adam(self.policy.parameters(), lr=args.lr)
 
-    def select_action(self, state, evaluate=False):
-        state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
+    def act(self, state, evaluate=False):
+        state = torch.FloatTensor(state).to(self.device)
+        state = state.unsqueeze(0)
         if evaluate is False:
             action, _, _ = self.policy.sample(state)
         else:
