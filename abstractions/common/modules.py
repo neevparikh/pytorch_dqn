@@ -292,6 +292,10 @@ class GaussianPolicy(torch.nn.Module):
             self.action_scale = torch.FloatTensor((action_space.high - action_space.low) / 2.)
             self.action_bias = torch.FloatTensor((action_space.high + action_space.low) / 2.)
 
+        trainable_parameters = sum(p.numel() for p in self.parameters() if p.requires_grad)
+        print(repr(self))
+        print("Number of trainable parameters: {}".format(trainable_parameters))
+
     def forward(self, state):
         x = self.body(state)
         mean = self.mean_linear(x)
@@ -372,6 +376,10 @@ class DeterministicPolicy(torch.nn.Module):
         else:
             self.action_scale = torch.FloatTensor((action_space.high - action_space.low) / 2.)
             self.action_bias = torch.FloatTensor((action_space.high + action_space.low) / 2.)
+
+        trainable_parameters = sum(p.numel() for p in self.parameters() if p.requires_grad)
+        print(repr(self))
+        print("Number of trainable parameters: {}".format(trainable_parameters))
 
     def forward(self, state):
         x = self.body(state)
