@@ -30,7 +30,7 @@ common_parser.add_argument('--max-steps', type=float_to_int, required=False, def
         help='Number of steps to run for')
 common_parser.add_argument('--model-path', type=str, required=False,
         help='The path to the save the pytorch model')
-common_parser.add_argument('--output-path', type=str, required=False,
+common_parser.add_argument('--output-path', default='logs', type=str, required=False,
         help='The output directory to store training stats')
 common_parser.add_argument('--seed', type=int, required=False, default=10,
         help='The random seed for this run')
