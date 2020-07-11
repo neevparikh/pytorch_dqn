@@ -64,7 +64,7 @@ class SAC:
             self.policy_optim = torch.optim.Adam(self.policy.parameters(), lr=args.lr)
 
     def act(self, state, evaluate=False):
-        state = torch.from_numpy(state).float().to(self.device)
+        state = torch.as_tensor(state).float().to(self.device)
         state = state.unsqueeze(0)
         if evaluate is False:
             action, _, _ = self.policy.sample(state)
