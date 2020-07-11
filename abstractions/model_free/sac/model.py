@@ -64,7 +64,7 @@ class SAC:
             self.policy_optim = torch.optim.Adam(self.policy.parameters(), lr=args.lr)
 
     def act(self, state, evaluate=False):
-        state = torch.FloatTensor(state).to(self.device)
+        state = torch.from_numpy(state).float().to(self.device)
         state = state.unsqueeze(0)
         if evaluate is False:
             action, _, _ = self.policy.sample(state)
@@ -79,10 +79,10 @@ class SAC:
 
         state_batch = torch.as_tensor(minibatch.state.astype(np.float32)).to(self.device)
         next_state_batch = torch.as_tensor(minibatch.next_state.astype(np.float32)).to(self.device)
-        action_batch = torch.FloatTensor(minibatch.action).to(self.device, dtype=torch.float32)
-        reward_batch = torch.FloatTensor(minibatch.reward).to(self.device, dtype=torch.float32)
+        action_batch = torch.as_tensor(minibatch.action).float().to(self.device)
+        reward_batch = torch.as_tensor(minibatch.reward).float().to(self.device)
         reward_batch = reward_batch.unsqueeze(-1)
-        mask_batch = torch.FloatTensor(minibatch.done).to(self.device).unsqueeze(1)
+        mask_batch = torch.as_tensor(minibatch.done).float().to(self.device).unsqueeze(1)
 
         with torch.no_grad():
             next_state_action, next_state_log_pi, _ = self.policy.sample(next_state_batch)
