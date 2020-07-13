@@ -209,7 +209,7 @@ def make_visual(env, shape):
 def initialize_environment(args):
     # Initialize environment
     visual_cartpole_shape = (80, 120)
-    visual_pendulum_shape = (80, 120)
+    visual_pendulum_shape = (120, 120)
     if args.env == "VisualCartPole-v0":
         from pyvirtualdisplay import Display
         _ = Display(visible=False, backend='xvfb').start()
