@@ -110,6 +110,29 @@ sac_parser.add_argument('--no-atari', action='store_true', required=False,
 sac_parser.add_argument('--ari', action='store_true', required=False,
         help='Whether to use annotated RAM')
 
+ppo_parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        parents=[common_parser], add_help=False)
+ppo_parser.add_argument('--discrete', action='store_true', required=False,
+        help='Discrete action space')
+ppo_parser.add_argument('--gradient-updates', type=float_to_int, default=80,
+        help='model updates per simulator step')
+ppo_parser.add_argument('--update-frequency', type=float_to_int, default=4e3,
+        help='number of steps between model updates')
+ppo_parser.add_argument('--action-std', type=float, default=0.5,
+        help='standard deviation for action (continuous only)')
+ppo_parser.add_argument('--eps-clip', type=float, default=0.2,
+        help='Eps clip parameter for PPO')
+ppo_parser.add_argument('--hidden-size', type=int, default=256,
+        help='hidden size (default: 256)')
+ppo_parser.add_argument('--model-type', type=str, default='mlp', choices=['mlp'],
+        help="Type of architecture")
+ppo_parser.add_argument('--no-atari', action='store_true', required=False,
+        help='Do not use atari preprocessing')
+ppo_parser.add_argument('--ari', action='store_true', required=False,
+        help='Whether to use annotated RAM')
+ppo_parser.add_argument('--test-policy-steps', type=float_to_int, required=False, default=1000,
+        help='Policy is tested every these many steps')
+
 model_based_parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         parents=[common_parser], add_help=False)
 
