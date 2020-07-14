@@ -1,6 +1,7 @@
 import torch
 
 from ...common.modules import ActorCritic
+from ...common.utils import hard_update
 
 
 class Rollouts:
@@ -116,7 +117,8 @@ class PPO:
             cumulative_loss += loss.mean().item()
 
         # Copy new weights into old policy:
-        self.policy_old.load_state_dict(self.policy.state_dict())
+        # self.policy_old.load_state_dict(self.policy.state_dict())
+        hard_update(self.policy_old, self.policy)
         self.rollouts.clear_rollouts()
 
         return cumulative_loss
