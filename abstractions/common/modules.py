@@ -204,10 +204,9 @@ class QNetwork(torch.nn.Module):
                 torch.nn.Conv2d(64, 64, kernel_size=(3, 3), stride=1),
                 torch.nn.ReLU(),
                 Reshape(-1, output_size))
-            self.q1 = torch.nn.Sequential(
-                torch.nn.Linear(output_size + num_actions, hidden_dim),
-                torch.nn.ReLU(),
-                torch.nn.Linear(hidden_dim, 1))
+            self.q1 = torch.nn.Sequential(torch.nn.Linear(output_size + num_actions, hidden_dim),
+                                          torch.nn.ReLU(),
+                                          torch.nn.Linear(hidden_dim, 1))
 
             self.body2 = torch.nn.Sequential(
                 torch.nn.Conv2d(num_frames, 32, kernel_size=(8, 8), stride=4),
@@ -217,10 +216,9 @@ class QNetwork(torch.nn.Module):
                 torch.nn.Conv2d(64, 64, kernel_size=(3, 3), stride=1),
                 torch.nn.ReLU(),
                 Reshape(-1, output_size))
-            self.q2 = torch.nn.Sequential(
-                torch.nn.Linear(output_size + num_actions, hidden_dim),
-                torch.nn.ReLU(),
-                torch.nn.Linear(hidden_dim, 1))
+            self.q2 = torch.nn.Sequential(torch.nn.Linear(output_size + num_actions, hidden_dim),
+                                          torch.nn.ReLU(),
+                                          torch.nn.Linear(hidden_dim, 1))
 
         self.apply(weights_init_)
 
@@ -398,3 +396,110 @@ class DeterministicPolicy(torch.nn.Module):
         self.action_bias = self.action_bias.to(device)
         self.noise = self.noise.to(device)
         return super(DeterministicPolicy, self).to(device)
+
+
+## PPO ##
+
+
+# Continuous
+class ActorCritic(torch.nn.Module):
+    def __init__(self, state_dim, action_dim, discrete, device, **kwargs):
+        super(ActorCritic, self).__init__()
+        # action mean range -1 to 1
+        self.discrete = discrete
+        self.device = device
+        if discrete:
+            assert 'hidden_size' in kwargs.keys(), "Must provide hidden_size"
+            hidden_size = kwargs['hidden_size']
+            # actor
+            self.actor = torch.nn.Sequential(torch.nn.Linear(state_dim, hidden_size),
+                                             torch.nn.Tanh(),
+                                             torch.nn.Linear(hidden_size, hidden_size),
+                                             torch.nn.Tanh(),
+                                             torch.nn.Linear(hidden_size, action_dim),
+                                             torch.nn.Softmax(dim=-1))
+
+            # critic
+            self.critic = torch.nn.Sequential(torch.nn.Linear(state_dim, hidden_size),
+                                              torch.nn.Tanh(),
+                                              torch.nn.Linear(hidden_size, hidden_size),
+                                              torch.nn.Tanh(),
+                                              torch.nn.Linear(hidden_size, 1))
+        else:
+            assert 'action_std' in kwargs.keys(), "Must provide action_std"
+            action_std = kwargs['action_std']
+            self.actor = torch.nn.Sequential(
+                torch.nn.Linear(state_dim, 64),
+                torch.nn.Tanh(),
+                torch.nn.Linear(64, 32),
+                torch.nn.Tanh(),
+                torch.nn.Linear(32, action_dim),
+                torch.nn.Tanh(),
+            )
+            # critic
+            self.critic = torch.nn.Sequential(
+                torch.nn.Linear(state_dim, 64),
+                torch.nn.Tanh(),
+                torch.nn.Linear(64, 32),
+                torch.nn.Tanh(),
+                torch.nn.Linear(32, 1),
+            )
+            self.action_var = torch.full((action_dim,), action_std**2).to(device)
+
+        trainable_parameters = sum(p.numel() for p in self.parameters() if p.requires_grad)
+        print(repr(self))
+        print("Number of trainable parameters: {}".format(trainable_parameters))
+
+    def forward(self):
+        raise NotImplementedError
+
+    def act(self, state, rollouts):
+        if self.discrete:
+            state = torch.from_numpy(state).float().to(self.device)
+            action_probs = self.actor(state)
+            dist = torch.distributions.Categorical(action_probs)
+            action = dist.sample()
+
+            rollouts.states.append(state)
+            rollouts.actions.append(action)
+            rollouts.logprobs.append(dist.log_prob(action))
+
+            return action.item()
+        else:
+            action_mean = self.actor(state)
+            cov_mat = torch.diag(self.action_var).to(self.device)
+
+            dist = torch.distributions.MultivariateNormal(action_mean, cov_mat)
+            action = dist.sample()
+            action_logprob = dist.log_prob(action)
+
+            rollouts.states.append(state)
+            rollouts.actions.append(action)
+            rollouts.logprobs.append(action_logprob)
+
+            return action.detach()
+
+    def evaluate(self, state, action):
+        if self.discrete:
+            action_probs = self.actor(state)
+            dist = torch.distributions.Categorical(action_probs)
+
+            action_logprobs = dist.log_prob(action)
+            dist_entropy = dist.entropy()
+
+            state_value = self.critic(state)
+
+            return action_logprobs, torch.squeeze(state_value), dist_entropy
+        else:
+            action_mean = self.actor(state)
+
+            action_var = self.action_var.expand_as(action_mean)
+            cov_mat = torch.diag_embed(action_var).to(self.device)
+
+            dist = torch.distributions.MultivariateNormal(action_mean, cov_mat)
+
+            action_logprobs = dist.log_prob(action)
+            dist_entropy = dist.entropy()
+            state_value = self.critic(state)
+
+            return action_logprobs, torch.squeeze(state_value), dist_entropy
