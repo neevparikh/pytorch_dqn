@@ -204,10 +204,9 @@ class QNetwork(torch.nn.Module):
                 torch.nn.Conv2d(64, 64, kernel_size=(3, 3), stride=1),
                 torch.nn.ReLU(),
                 Reshape(-1, output_size))
-            self.q1 = torch.nn.Sequential(
-                torch.nn.Linear(output_size + num_actions, hidden_dim),
-                torch.nn.ReLU(),
-                torch.nn.Linear(hidden_dim, 1))
+            self.q1 = torch.nn.Sequential(torch.nn.Linear(output_size + num_actions, hidden_dim),
+                                          torch.nn.ReLU(),
+                                          torch.nn.Linear(hidden_dim, 1))
 
             self.body2 = torch.nn.Sequential(
                 torch.nn.Conv2d(num_frames, 32, kernel_size=(8, 8), stride=4),
@@ -217,10 +216,9 @@ class QNetwork(torch.nn.Module):
                 torch.nn.Conv2d(64, 64, kernel_size=(3, 3), stride=1),
                 torch.nn.ReLU(),
                 Reshape(-1, output_size))
-            self.q2 = torch.nn.Sequential(
-                torch.nn.Linear(output_size + num_actions, hidden_dim),
-                torch.nn.ReLU(),
-                torch.nn.Linear(hidden_dim, 1))
+            self.q2 = torch.nn.Sequential(torch.nn.Linear(output_size + num_actions, hidden_dim),
+                                          torch.nn.ReLU(),
+                                          torch.nn.Linear(hidden_dim, 1))
 
         self.apply(weights_init_)
 
@@ -414,21 +412,19 @@ class ActorCritic(torch.nn.Module):
             assert 'hidden_size' in kwargs.keys(), "Must provide hidden_size"
             hidden_size = kwargs['hidden_size']
             # actor
-            self.actor = torch.nn.Sequential(
-                    torch.nn.Linear(state_dim, hidden_size),
-                    torch.nn.Tanh(),
-                    torch.nn.Linear(hidden_size, hidden_size),
-                    torch.nn.Tanh(),
-                    torch.nn.Linear(hidden_size, action_dim),
-                    torch.nn.Softmax(dim=-1))
+            self.actor = torch.nn.Sequential(torch.nn.Linear(state_dim, hidden_size),
+                                             torch.nn.Tanh(),
+                                             torch.nn.Linear(hidden_size, hidden_size),
+                                             torch.nn.Tanh(),
+                                             torch.nn.Linear(hidden_size, action_dim),
+                                             torch.nn.Softmax(dim=-1))
 
             # critic
-            self.critic = torch.nn.Sequential(
-                    torch.nn.Linear(state_dim, hidden_size),
-                    torch.nn.Tanh(),
-                    torch.nn.Linear(hidden_size, hidden_size),
-                    torch.nn.Tanh(),
-                    torch.nn.Linear(hidden_size, 1))
+            self.critic = torch.nn.Sequential(torch.nn.Linear(state_dim, hidden_size),
+                                              torch.nn.Tanh(),
+                                              torch.nn.Linear(hidden_size, hidden_size),
+                                              torch.nn.Tanh(),
+                                              torch.nn.Linear(hidden_size, 1))
         else:
             assert 'action_std' in kwargs.keys(), "Must provide action_std"
             action_std = kwargs['action_std']

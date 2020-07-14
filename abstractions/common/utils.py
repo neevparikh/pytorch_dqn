@@ -17,6 +17,7 @@ from .gym_wrappers import AtariPreprocess, MaxAndSkipEnv, FrameStack, ResetARI, 
 
 float_to_int = lambda x: int(float(x))
 
+# yapf: disable
 common_parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 common_parser.add_argument('--env', type=str, required=True,
         help='The gym environment to train on')
@@ -135,13 +136,17 @@ ppo_parser.add_argument('--test-policy-steps', type=float_to_int, required=False
 
 model_based_parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         parents=[common_parser], add_help=False)
+# yapf: enable
+
 
 ## DQN utils ##
+
 
 def init_weights(m):
     if type(m) == torch.nn.Linear:
         torch.nn.init.uniform_(m.weight, -0.1, 0.1)
         torch.nn.init.uniform_(m.bias, -1, 1)
+
 
 def conv2d_size_out(size, kernel_size, stride):
     ''' Adapted from pytorch tutorials: 
@@ -150,9 +155,11 @@ def conv2d_size_out(size, kernel_size, stride):
     return ((size[0] - (kernel_size[0] - 1) - 1) // stride + 1,
             (size[1] - (kernel_size[1] - 1) - 1) // stride + 1)
 
+
 def deque_to_tensor(last_num_frames):
     """ Convert deque of n frames to tensor """
     return torch.cat(list(last_num_frames), dim=0)
+
 
 def plot_grad_flow(named_parameters):
     '''
@@ -195,6 +202,7 @@ def plot_grad_flow(named_parameters):
     ], ['max-gradient', 'mean-gradient', 'zero-gradient'])
     return plt.gcf()
 
+
 def reset_seeds(seed):
     # Setting cuda seeds
     if torch.cuda.is_available():
@@ -206,6 +214,7 @@ def reset_seeds(seed):
     random.seed(seed)
     np.random.seed(seed)
 
+
 def append_timestamp(string, fmt_string=None):
     now = datetime.now()
     if fmt_string:
@@ -213,13 +222,16 @@ def append_timestamp(string, fmt_string=None):
     else:
         return string + "_" + str(now).replace(" ", "_")
 
+
 def make_atari(env, num_frames):
     """ Wrap env in atari processed env """
     return FrameStack(MaxAndSkipEnv(AtariPreprocess(env), 4), num_frames)
 
+
 def make_ari(env):
     """ Wrap env in reset to match observation """
     return ResetARI(AtariARIWrapper(env))
+
 
 def make_visual(env, shape):
     """ Wrap env to return pixel observations """
@@ -228,6 +240,7 @@ def make_visual(env, shape):
     env = GrayScaleObservation(env)
     env = ResizeObservation(env, shape)
     return env
+
 
 def initialize_environment(args):
     # Initialize environment
@@ -261,11 +274,11 @@ def initialize_environment(args):
         env = make_visual(env, visual_pendulum_shape)
         test_env = make_visual(env, visual_pendulum_shape)
     elif args.env == "CartPole-PosAngle-v0":
-        env = IndexedObservation(gym.make("CartPole-v0"), [0,1])
-        test_env = IndexedObservation(gym.make("CartPole-v0"), [0,1])
+        env = IndexedObservation(gym.make("CartPole-v0"), [0, 1])
+        test_env = IndexedObservation(gym.make("CartPole-v0"), [0, 1])
     elif args.env == "CartPole-PosAngle-v1":
-        env = IndexedObservation(gym.make("CartPole-v1"), [0,1])
-        test_env = IndexedObservation(gym.make("CartPole-v1"), [0,1])
+        env = IndexedObservation(gym.make("CartPole-v1"), [0, 1])
+        test_env = IndexedObservation(gym.make("CartPole-v1"), [0, 1])
     else:
         env = gym.make(args.env)
         test_env = gym.make(args.env)
@@ -290,7 +303,9 @@ def initialize_environment(args):
     test_env.seed(args.seed + 1000)
     return env, test_env
 
+
 ## SAC utils ##
+
 
 def create_log_gaussian(mean, log_std, t):
     quadratic = -((0.5 * (t - mean) / (log_std.exp())).pow(2))
@@ -299,6 +314,7 @@ def create_log_gaussian(mean, log_std, t):
     z = l[-1] * math.log(2 * math.pi)
     log_p = quadratic.sum(dim=-1) - log_z.sum(dim=-1) - 0.5 * z
     return log_p
+
 
 def logsumexp(inputs, dim=None, keepdim=False):
     if dim is None:
@@ -310,13 +326,16 @@ def logsumexp(inputs, dim=None, keepdim=False):
         outputs = outputs.squeeze(dim)
     return outputs
 
+
 def soft_update(target, source, tau):
     for target_param, param in zip(target.parameters(), source.parameters()):
         target_param.data.copy_(target_param.data * (1.0 - tau) + param.data * tau)
 
+
 def hard_update(target, source):
     for target_param, param in zip(target.parameters(), source.parameters()):
         target_param.data.copy_(param.data)
+
 
 def weights_init_(m):
     if isinstance(m, torch.nn.Linear):
