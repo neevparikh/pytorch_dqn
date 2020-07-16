@@ -43,7 +43,7 @@ common_parser.add_argument('--render-episodes', type=int, required=False, defaul
         help='Render every these many episodes')
 common_parser.add_argument('--replay-buffer-size', type=float_to_int, required=False, default=50000,
         help='Max size of replay buffer')
-common_parser.add_argument('--lr', type=float, required=False, default=0.001,
+common_parser.add_argument('--lr', type=float, required=False, default=3e-5,
         help='Learning rate for the optimizer')
 common_parser.add_argument('--batchsize', type=int, required=False, default=32,
         help='Number of experiences sampled from replay buffer')
