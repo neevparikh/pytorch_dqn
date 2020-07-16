@@ -65,6 +65,8 @@ dqn_parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHe
         parents=[common_parser], add_help=False)
 dqn_parser.add_argument('--ari', action='store_true', required=False,
         help='Whether to use annotated RAM')
+dqn_parser.add_argument('--action-stack', action='store_true', required=False,
+        help='Whether to stack action as previous plane')
 dqn_parser.add_argument('--model-type', type=str, required=True, default='mlp',
         choices=['cnn', 'mlp'],
         help="Type of architecture")
@@ -93,7 +95,7 @@ sac_parser.add_argument('--target-moving-average', type=float, required=False, d
         help='EMA parameter for target network')
 sac_parser.add_argument('--alpha', type=float, default=0.2,
         help='Temperature parameter α determines the relative importance of the entropy term \
-                against the reward (default: 0.2)')
+                against the reward (default: 0.2)'                                                                                                    )
 sac_parser.add_argument('--automatic-entropy-tuning', action='store_true',
         help='Automaically adjust α (default: False)')
 sac_parser.add_argument('--hidden-size', type=int, default=256,
@@ -110,6 +112,8 @@ sac_parser.add_argument('--no-atari', action='store_true', required=False,
         help='Do not use atari preprocessing')
 sac_parser.add_argument('--ari', action='store_true', required=False,
         help='Whether to use annotated RAM')
+sac_parser.add_argument('--action-stack', action='store_true', required=False,
+        help='Whether to stack action as previous plane')
 
 ppo_parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         parents=[common_parser], add_help=False)
@@ -131,6 +135,8 @@ ppo_parser.add_argument('--no-atari', action='store_true', required=False,
         help='Do not use atari preprocessing')
 ppo_parser.add_argument('--ari', action='store_true', required=False,
         help='Whether to use annotated RAM')
+ppo_parser.add_argument('--action-stack', action='store_true', required=False,
+        help='Whether to stack action as previous plane')
 ppo_parser.add_argument('--test-policy-steps', type=float_to_int, required=False, default=1000,
         help='Policy is tested every these many steps')
 
@@ -223,9 +229,17 @@ def append_timestamp(string, fmt_string=None):
         return string + "_" + str(now).replace(" ", "_")
 
 
-def make_atari(env, num_frames):
+def make_atari(env, num_frames, action_stack=False):
     """ Wrap env in atari processed env """
-    return FrameStack(MaxAndSkipEnv(AtariPreprocess(env), 4), num_frames)
+    try:
+        noop_action = env.get_action_meanings().index("NOOP")
+    except ValueError:
+        print("Cannot find NOOP in env, defaulting to 0")
+        noop_action = 0
+    return FrameStack(MaxAndSkipEnv(AtariPreprocess(env), 4),
+                      num_frames,
+                      action_stack=action_stack,
+                      reset_action=noop_action)
 
 
 def make_ari(env):
@@ -285,14 +299,22 @@ def initialize_environment(args):
 
     if args.model_type == 'cnn':
         assert args.num_frames
+
+        if args.action_stack:
+            print("Stacking actions")
+            args.num_frames *= 2
+
         if not args.no_atari:
             print("Using atari preprocessing")
-            env = make_atari(env, args.num_frames)
-            test_env = make_atari(test_env, args.num_frames)
+            env = make_atari(env, args.num_frames, action_stack=args.action_stack)
+            test_env = make_atari(test_env, args.num_frames, action_stack=args.action_stack)
         else:
             print("FrameStacking with {}".format(args.num_frames))
-            env = FrameStack(env, args.num_frames)
-            test_env = FrameStack(test_env, args.num_frames)
+            env = FrameStack(env, args.num_frames, action_stack=args.action_stack, reset_action=0)
+            test_env = FrameStack(test_env,
+                                  args.num_frames,
+                                  action_stack=args.action_stack,
+                                  reset_action=0)
 
     if args.ari:
         print("Using ARI")

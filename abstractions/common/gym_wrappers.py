@@ -142,7 +142,7 @@ class MaxAndSkipEnv(gym.Wrapper):
 
 
 class FrameStack(gym.Wrapper):
-    def __init__(self, env, k):
+    def __init__(self, env, k, action_stack=False, reset_action=None):
         """Stack k last frames.
         Returns lazy array, which is much more memory efficient.
         See Also
@@ -151,8 +151,14 @@ class FrameStack(gym.Wrapper):
         """
         gym.Wrapper.__init__(self, env)
         self.k = k
-        self.frames = deque([], maxlen=k)
+        if action_stack:
+            assert k % 2 == 0, "{} must be even, something went wrong".format(k)
+        self.frames = deque([], maxlen=k // 2)
+        self.actions = deque([], maxlen=k // 2) if action_stack else None
+        self.reset_action = reset_action
+
         shp = env.observation_space.shape
+        self.action_dtype = env.action_space.dtype
         self.observation_space = gym.spaces.Box(low=0,
                                                 high=255,
                                                 shape=((k,) + shp),
@@ -160,18 +166,29 @@ class FrameStack(gym.Wrapper):
 
     def reset(self):
         ob = self.env.reset()
-        for _ in range(self.k):
+        for _ in range(self.k // 2):
             self.frames.append(ob)
+            if self.actions is not None:
+                self.actions.append(
+                    np.ones_like(ob, dtype=self.action_dtype) * self.reset_action)
         return self._get_ob()
 
     def step(self, action):
         ob, reward, done, info = self.env.step(action)
         self.frames.append(ob)
+        if self.actions is not None:
+            # TODO - have this support actions with dimension greater than 1
+            self.actions.append(np.ones_like(ob, dtype=self.action_dtype) * action)
         return self._get_ob(), reward, done, info
 
     def _get_ob(self):
-        assert len(self.frames) == self.k
-        return LazyFrames(list(self.frames))
+        assert len(self.frames) == self.k // 2
+        if self.actions is not None:
+            return LazyFrames([
+                item for frame_action in zip(self.frames, self.actions) for item in frame_action
+                ])
+        else:
+            return LazyFrames(list(self.frames))
 
 
 class LazyFrames(object):
