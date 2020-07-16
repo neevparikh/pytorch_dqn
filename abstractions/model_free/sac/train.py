@@ -76,13 +76,12 @@ def episode_loop(env, test_env, agent, replay_buffer, args, writer):
 
         # Collect data from the environment
         while not done:
-            can_train = len(replay_buffer) >= args.batchsize and global_steps > args.warmup_period
-            if can_train:
+            if global_steps <= args.warmup_period:
                 action = env.action_space.sample()
             else:
                 action = agent.act(state)
             
-            if can_train:
+            if len(replay_buffer) >= args.batchsize and global_steps > args.warmup_period:
                 for _ in range(args.updates_per_step):
                     # Update parameters of all the networks
                     result = agent.update_parameters(replay_buffer, args.batchsize, updates)
