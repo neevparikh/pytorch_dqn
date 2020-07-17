@@ -150,23 +150,24 @@ class FrameStack(gym.Wrapper):
         LazyFrames
         """
         gym.Wrapper.__init__(self, env)
-        self.k = k
+        self.total_k = k
         if action_stack:
             assert k % 2 == 0, "{} must be even, something went wrong".format(k)
-        self.frames = deque([], maxlen=k // 2)
-        self.actions = deque([], maxlen=k // 2) if action_stack else None
+        self.per_stack = k // 2 if action_stack else k
+        self.frames = deque([], maxlen=self.per_stack)
+        self.actions = deque([], maxlen=self.per_stack) if action_stack else None
         self.reset_action = reset_action
 
         shp = env.observation_space.shape
         self.action_dtype = env.action_space.dtype
         self.observation_space = gym.spaces.Box(low=0,
                                                 high=255,
-                                                shape=((k,) + shp),
+                                                shape=((self.total_k,) + shp),
                                                 dtype=env.observation_space.dtype)
 
     def reset(self):
         ob = self.env.reset()
-        for _ in range(self.k // 2):
+        for _ in range(self.per_stack):
             self.frames.append(ob)
             if self.actions is not None:
                 self.actions.append(
@@ -182,7 +183,7 @@ class FrameStack(gym.Wrapper):
         return self._get_ob(), reward, done, info
 
     def _get_ob(self):
-        assert len(self.frames) == self.k // 2
+        assert len(self.frames) == self.per_stack
         if self.actions is not None:
             return LazyFrames([
                 item for frame_action in zip(self.frames, self.actions) for item in frame_action
