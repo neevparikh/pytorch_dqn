@@ -132,6 +132,7 @@ class MarkovHead(torch.nn.Module):
             N = len(z1)
             idx = torch.randperm(N)  # shuffle indices of next states
         z1_neg = z1.view(N, -1)[idx].view(z1.size())
+
         # concatenate positive and negative examples
         z0_extended = torch.cat([z0, z0], dim=0)
         z1_pos_neg = torch.cat([z1, z1_neg], dim=0)
