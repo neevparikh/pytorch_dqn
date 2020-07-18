@@ -1,9 +1,16 @@
 # Compact Abstractions
-Implementation of DQN in Pytorch -- https://github.com/neevparikh/pytorch_dqn
 
-Implementation of SAC in Pytorch -- https://github.com/pranz24/pytorch-soft-actor-critic
+Model Based:
 
-Implementation of PPO in Pytorch -- https://github.com/nikhilbarhate99/PPO-PyTorch
+- DynaDQN (multi-step, backwards Dyna with replay)
+
+Model Free:
+
+- Implementation of DQN in Pytorch -- https://github.com/neevparikh/pytorch_dqn
+
+- Implementation of SAC in Pytorch -- https://github.com/pranz24/pytorch-soft-actor-critic
+
+- Implementation of PPO in Pytorch -- https://github.com/nikhilbarhate99/PPO-PyTorch
 
 ## Usage
 
@@ -21,7 +28,4 @@ Now, install minimal packages using:
 
 ``` pip install -r requirements.txt ```
 
-Make sure run.sh is executable (check with `ls -l`, if +x is in the permissions,
-you're good). If not use `chmod +x run.sh`, to get it executable. 
-
-Then use `./run.sh` to run the dqn on the specified environment.
+You can run various methods (model_free and model_based).
