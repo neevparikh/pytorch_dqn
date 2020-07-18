@@ -6,9 +6,9 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-from ..common.utils import initialize_environment, reset_seeds, model_free_parser
+from ...common.utils import initialize_environment, reset_seeds, common_parser
 from .model import FeatureNet
-from ..common.replay_buffer import ReplayBuffer
+from ...common.replay_buffer import ReplayBuffer
 
 
 def generate_experiences(args, env):
@@ -20,7 +20,7 @@ def generate_experiences(args, env):
     while i < args.replay_buffer_size:
         if done:
             state, done = env.reset(), False
-        action = np.random.randint(0, env.action_space.n)
+        action = env.action_space.sample()
         next_state, reward, done, _ = env.step(action)
         if not done:
             mem.append(state, action, reward, next_state, int(done))
@@ -51,7 +51,7 @@ def train():
         input_shape = env.observation_space.shape
     network = FeatureNet(args, env.action_space.n, input_shape)
 
-    experiences_filepath = os.path.join(results_dir, 'experiences.mem')
+    # experiences_filepath = os.path.join(results_dir, 'experiences.mem')
     print('Generating experiences')
     mem = generate_experiences(args, env)
 
@@ -71,9 +71,8 @@ def train():
 
 
 if __name__ == '__main__':
-    parser = model_free_parser
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-            parents=[model_free_parser], add_help=False)
+            parents=[common_parser], add_help=False)
     parser.add_argument('--max-episode-length',
                         type=int,
                         default=int(108e3),
