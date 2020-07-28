@@ -6,7 +6,18 @@ import gym
 import cv2
 
 class IndexedObservation(gym.ObservationWrapper):
-    """ Return elements of observation at given indices """
+    """ 
+    Description:
+        Return elements of observation at given indices
+
+    Usage:
+        For example, say the base env has observations Box(4) and you want the indices 1 and 3. You
+        would pass in indices=[1,3] and the observation_space of the wrapped env would be Box(2).
+
+    Notes:
+        - This currently only supports 1D observations but can easily be extended to support
+          multidimensional observations
+    """
     def __init__(self, env, indices):
         super(IndexedObservation, self).__init__(env)
         self.indices = indices
@@ -25,7 +36,17 @@ class IndexedObservation(gym.ObservationWrapper):
 
 # Adapted from https://github.com/openai/gym/blob/master/gym/wrappers/resize_observation.py
 class ResizeObservation(gym.ObservationWrapper):
-    """Downsample the image observation to a square image. """
+    """
+    Description:
+        Downsample the image observation to a given shape.
+    
+    Usage:
+        Pass in requisite shape (e.g. 84,84) and it will use opencv to resize the observation to
+        that shape
+
+    Notes:
+        - N/A
+    """
     def __init__(self, env, shape):
         super(ResizeObservation, self).__init__(env)
         if isinstance(shape, int):
@@ -42,6 +63,17 @@ class ResizeObservation(gym.ObservationWrapper):
 
 
 class ObservationDictToInfo(gym.Wrapper):
+    """
+    Description:
+        Given an env with an observation dict, extract the given state key as the state and pass the
+        existing dict into the info. 
+    
+    Usage:
+        Wrap any Dict observation.
+
+    Notes:
+        - By convention, no info is return on reset, so that dict is lost. 
+    """
     def __init__(self, env, state_key):
         gym.Wrapper.__init__(self, env)
         assert type(env.observation_space) == gym.spaces.Dict
@@ -59,6 +91,16 @@ class ObservationDictToInfo(gym.Wrapper):
 
 
 class ResetARI(gym.Wrapper):
+    """
+    Description:
+        On reset and step, grab the values of the labeled dict from info and return as state.
+
+    Usage:
+        Wrap over ARI env. 
+
+    Notes:
+        - N/A
+    """
     def __init__(self, env):
         gym.Wrapper.__init__(self, env)
 
@@ -86,8 +128,17 @@ class ResetARI(gym.Wrapper):
 # Adapted from OpenAI Baselines:
 # https://github.com/openai/baselines/blob/master/baselines/common/atari_wrappers.py
 class AtariPreprocess(gym.Wrapper):
+    """
+    Description:
+        Preprocessing as described in the Nature DQN paper (Mnih 2015) 
+    
+    Usage:
+        Wrap env around this. It will use torchvision to transform the image according to Mnih 2015
+
+    Notes:
+        - Should be decomposed into using separate envs for each. 
+    """
     def __init__(self, env, shape=(84, 84)):
-        """ Preprocessing as described in the Nature DQN paper (Mnih 2015) """
         gym.Wrapper.__init__(self, env)
         self.shape = shape
         self.transforms = T.Compose([
@@ -112,8 +163,18 @@ class AtariPreprocess(gym.Wrapper):
 
 
 class MaxAndSkipEnv(gym.Wrapper):
+    """
+    Description:
+        Return only every `skip`-th frame. Repeat action, sum reward, and max over last 
+        observations.
+    
+    Usage:
+        Wrap env and provide skip param.
+
+    Notes:
+        - N/A
+    """
     def __init__(self, env, skip=4):
-        """Return only every `skip`-th frame"""
         gym.Wrapper.__init__(self, env)
         # most recent raw observations (for max pooling across time steps)
         self._obs_buffer = np.zeros((2,) + env.observation_space.shape, dtype=np.uint8)
@@ -123,7 +184,6 @@ class MaxAndSkipEnv(gym.Wrapper):
         return self.env.reset(**kwargs)
 
     def step(self, action):
-        """Repeat action, sum reward, and max over last observations."""
         total_reward = 0.0
         done = None
         for i in range(self._skip):
@@ -142,13 +202,22 @@ class MaxAndSkipEnv(gym.Wrapper):
 
 
 class FrameStack(gym.Wrapper):
+    """
+    Description:
+        Stack k last frames. Returns lazy array, which is much more memory efficient. Allows action
+        stacking too via flag.
+    
+    Usage:
+        - action_stack: if actions should be tracked and stacked too.
+        - reset_action: what action to stack on reset
+        - k: is how many frames you want to stack. 
+
+    Notes:
+        - Have this support actions with dimension greater than 1.
+        - If you're stacking actions, then k must include the action frames.
+        - If you're stacking actions, then k must be even.
+    """
     def __init__(self, env, k, action_stack=False, reset_action=None):
-        """Stack k last frames.
-        Returns lazy array, which is much more memory efficient.
-        See Also
-        --------
-        LazyFrames
-        """
         gym.Wrapper.__init__(self, env)
         self.total_k = k
         if action_stack:
@@ -178,7 +247,6 @@ class FrameStack(gym.Wrapper):
         ob, reward, done, info = self.env.step(action)
         self.frames.append(ob)
         if self.actions is not None:
-            # TODO - have this support actions with dimension greater than 1
             self.actions.append(np.ones_like(ob, dtype=self.action_dtype) * action)
         return self._get_ob(), reward, done, info
 
@@ -193,11 +261,19 @@ class FrameStack(gym.Wrapper):
 
 
 class LazyFrames(object):
+    """
+    Description:
+        This object ensures that common frames between the observations are only stored once.  It
+        exists purely to optimize memory usage which can be huge for DQN's 1M frames replay buffers.
+        This object should only be converted to numpy array before being passed to the model.
+    
+    Usage:
+        Wrap frames with this object. 
+
+    Notes:
+        - Can be finicky if used without the OpenAI ReplayBuffer
+    """
     def __init__(self, frames):
-        """This object ensures that common frames between the observations are
-        only stored once.  It exists purely to optimize memory usage which can
-        be huge for DQN's 1M frames replay buffers.  This object should only be
-        converted to numpy array before being passed to the model."""
         self._frames = frames
 
     def _force(self):

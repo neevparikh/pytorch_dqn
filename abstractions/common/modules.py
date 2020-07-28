@@ -4,12 +4,13 @@ from .utils import weights_init_, conv2d_size_out
 
 
 class Reshape(torch.nn.Module):
-    """Module that returns a view of the input which has a different size
+    """
+    Description:
+        Module that returns a view of the input which has a different size
 
-    Parameters
-    ----------
-    args : int...
-        The desired size
+    Parameters:
+        - args : Int...
+            The desired size
     """
     def __init__(self, *args):
         super().__init__()
@@ -28,6 +29,18 @@ class Reshape(torch.nn.Module):
 
 
 class MLP(torch.nn.Module):
+    """
+    Description:
+        Multilayer perceptron module for plugging into other implementations
+
+    Parameters:
+        - layer_sizes : List[Int]
+            The layer sizes as int, i.e. [10, 15, 15, 5]
+        - activation : func
+            Function for activation
+        - final_activation : func 
+            Function for activation of the last layer
+    """
     def __init__(self, layer_sizes, activation=torch.nn.ReLU, final_activation=None):
         super(MLP, self).__init__()
         layer_shapes = list(zip(layer_sizes[:-1], layer_sizes[1:]))
@@ -49,6 +62,17 @@ class MLP(torch.nn.Module):
 
 
 def build_phi_network(args, input_shape):
+    """
+    Description:
+        Construct the appropriate kind of phi network for the pretraining step in the markov
+        abstractions
+
+    Parameters:
+        - args : Namespace
+            See the `markov` folder for more information on the argparse
+        - input_shape : Tuple[Int]
+            Shape of the input (state generally)
+    """
     if args.model_type == 'cnn':
         final_size = conv2d_size_out(input_shape, (8, 8), 4)
         final_size = conv2d_size_out(final_size, (4, 4), 2)
@@ -87,6 +111,21 @@ def build_phi_network(args, input_shape):
 
 
 class InverseModel(torch.nn.Module):
+    """
+    Description:
+        Network module that captures predicting the action given a state, next_state pair.
+
+    Parameters:
+        - args : Namespace
+            See the `markov` folder for information on the argparse.
+        - feature_size : Int
+            The size of the abstract state
+        - num_actions : Int
+            The number of actions in the environment
+    
+    Notes:
+        - This does not support continuous action spaces right now. TODO
+    """
     def __init__(self, args, feature_size, num_actions):
         super(InverseModel, self).__init__()
         self.model = torch.nn.Sequential(torch.nn.Linear(feature_size * 2, args.hidden_size),
@@ -99,6 +138,16 @@ class InverseModel(torch.nn.Module):
 
 
 class ContrastiveModel(torch.nn.Module):
+    """
+    Description:
+        Network module that captures if a given state1, state2 pair belong in the same transition.
+
+    Parameters:
+        - args : Namespace
+            See the `markov` folder for information on the argparse.
+        - feature_size : Int
+            The size of the abstract state
+    """
     def __init__(self, args, feature_size):
         super(ContrastiveModel, self).__init__()
         self.model = torch.nn.Sequential(torch.nn.Linear(feature_size * 2, args.hidden_size),
@@ -111,6 +160,21 @@ class ContrastiveModel(torch.nn.Module):
 
 
 class MarkovHead(torch.nn.Module):
+    """
+    Description:
+        Network module that combines contrastive and inverse models.
+
+    Parameters:
+        - args : Namespace
+            See the `markov` folder for information on the argparse.
+        - feature_size : Int
+            The size of the abstract state
+        - num_actions : Int
+            The number of actions in the environment
+    
+    Notes:
+        - This does not support continuous action spaces right now. TODO
+    """
     def __init__(self, args, feature_size, num_actions):
         super(MarkovHead, self).__init__()
         self.inverse_model = InverseModel(args, feature_size, num_actions)
