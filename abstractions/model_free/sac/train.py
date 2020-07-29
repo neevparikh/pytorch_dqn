@@ -9,7 +9,8 @@ from torch.utils.tensorboard import SummaryWriter
 
 from .model import SAC
 from ...common.replay_buffer import ReplayBuffer
-from ...common.utils import sac_parser, initialize_environment, reset_seeds
+from ...common.utils import initialize_environment, reset_seeds
+from ...common.parsers import sac_parser
 
 
 def test_policy(test_env, agent, episode, global_steps, writer, log_filename, args):

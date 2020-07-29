@@ -7,7 +7,8 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from ..common.replay_buffer import ReplayBuffer
-from ..common.utils import model_based_parser, append_timestamp
+from ..common.parsers import model_based_parser
+from ..common.utils import append_timestamp
 from .model import ModelNet
 
 def get_action(env):

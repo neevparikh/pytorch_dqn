@@ -6,7 +6,8 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-from ...common.utils import initialize_environment, reset_seeds, common_parser
+from ...common.utils import initialize_environment, reset_seeds
+from ...common.parsers import common_parser
 from .model import FeatureNet
 from ...common.replay_buffer import ReplayBuffer
 

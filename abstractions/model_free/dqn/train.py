@@ -7,7 +7,8 @@ import torch
 import gym
 from torch.utils.tensorboard import SummaryWriter
 
-from ...common.utils import dqn_parser, append_timestamp, reset_seeds, initialize_environment
+from ...common.utils import append_timestamp, reset_seeds, initialize_environment
+from ...common.parsers import dqn_parser
 from .model import DQN_agent
 
 

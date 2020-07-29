@@ -6,7 +6,8 @@ import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from ...common.utils import ppo_parser, reset_seeds, initialize_environment
+from ...common.utils import reset_seeds, initialize_environment
+from ...common.parsers import ppo_parser
 from .model import PPO 
 
 
