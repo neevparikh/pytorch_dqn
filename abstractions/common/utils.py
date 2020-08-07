@@ -125,43 +125,37 @@ def make_visual(env, shape):
     return env
 
 
+def get_wrapped_env(env_string, wrapper_func, fake_display=True, **kwargs):
+    if fake_display:
+        from pyvirtualdisplay import Display
+        _ = Display(visible=False, backend='xvfb').start()
+    env = gym.make(env_string)
+    test_env = gym.make(env_string)
+    env.reset()
+    test_env.reset()
+    env = wrapper_func(env, **kwargs)
+    test_env = wrapper_func(test_env, **kwargs)
+    return env, test_env
+
+
 def initialize_environment(args):
     # Initialize environment
     visual_cartpole_shape = (80, 120)
     visual_pendulum_shape = (120, 120)
     if args.env == "VisualCartPole-v0":
-        from pyvirtualdisplay import Display
-        _ = Display(visible=False, backend='xvfb').start()
-        env = gym.make("CartPole-v0")
-        test_env = gym.make("CartPole-v0")
-        env.reset()
-        test_env.reset()
-        env = make_visual(env, visual_cartpole_shape)
-        test_env = make_visual(env, visual_cartpole_shape)
+        env, test_env = get_wrapped_env("CartPole-v0", make_visual, shape=visual_cartpole_shape)
     elif args.env == "VisualCartPole-v1":
-        from pyvirtualdisplay import Display
-        _ = Display(visible=False, backend='xvfb').start()
-        env = gym.make("CartPole-v1")
-        test_env = gym.make("CartPole-v1")
-        env.reset()
-        test_env.reset()
-        env = make_visual(env, visual_cartpole_shape)
-        test_env = make_visual(env, visual_cartpole_shape)
+        env, test_env = get_wrapped_env("CartPole-v1", make_visual, shape=visual_cartpole_shape)
     elif args.env == "VisualPendulum-v0":
-        from pyvirtualdisplay import Display
-        _ = Display(visible=False, backend='xvfb').start()
-        env = gym.make("Pendulum-v0")
-        test_env = gym.make("Pendulum-v0")
-        env.reset()
-        test_env.reset()
-        env = make_visual(env, visual_pendulum_shape)
-        test_env = make_visual(env, visual_pendulum_shape)
+        env, test_env = get_wrapped_env("Pendulum-v0", make_visual, shape=visual_pendulum_shape)
     elif args.env == "CartPole-PosAngle-v0":
-        env = IndexedObservation(gym.make("CartPole-v0"), [0, 1])
-        test_env = IndexedObservation(gym.make("CartPole-v0"), [0, 1])
+        env, test_env = get_wrapped_env("CartPole-v0", IndexedObservation, indices=[0, 1],
+                fake_display=False)
     elif args.env == "CartPole-PosAngle-v1":
-        env = IndexedObservation(gym.make("CartPole-v1"), [0, 1])
-        test_env = IndexedObservation(gym.make("CartPole-v1"), [0, 1])
+        env, test_env = get_wrapped_env("CartPole-v1", IndexedObservation, indices=[0, 1],
+                fake_display=False)
+    elif args.env == "VisualMountainCar-v0":
+        env, test_env = get_wrapped_env("MountainCar-v0", make_visual, shape=visual_cartpole_shape)
     else:
         env = gym.make(args.env)
         test_env = gym.make(args.env)
