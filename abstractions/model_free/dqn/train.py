@@ -116,6 +116,7 @@ def episode_loop(env, test_env, agent, args, writer):
 
         if not args.no_tensorboard:
             writer.add_scalar('training/avg_episode_loss', cumulative_loss / steps, episode)
+            writer.add_scalar('training/episode_score', score, episode)
         end = time.time()
 
         episode += 1
