@@ -158,6 +158,8 @@ def initialize_environment(args):
         env, test_env = get_wrapped_env("MountainCar-v0", make_visual, shape=visual_cartpole_shape)
     elif args.env == "VisualAcrobot-v1":
         env, test_env = get_wrapped_env("Acrobot-v1", make_visual, shape=visual_pendulum_shape)
+    elif args.env[:6] == 'Visual':
+        env, test_env = get_wrapped_env(args.env[6:], make_visual, shape=(64,64))
     else:
         env = gym.make(args.env)
         test_env = gym.make(args.env)
