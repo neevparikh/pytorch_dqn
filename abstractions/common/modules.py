@@ -38,7 +38,7 @@ class MLP(torch.nn.Module):
             The layer sizes as int, i.e. [10, 15, 15, 5]
         - activation : func
             Function for activation
-        - final_activation : func 
+        - final_activation : func
             Function for activation of the last layer
     """
     def __init__(self, layer_sizes, activation=torch.nn.ReLU, final_activation=None):
@@ -122,19 +122,33 @@ class InverseModel(torch.nn.Module):
             The size of the abstract state
         - num_actions : Int
             The number of actions in the environment
-    
-    Notes:
-        - This does not support continuous action spaces right now. TODO
+
     """
-    def __init__(self, args, feature_size, num_actions):
+    def __init__(self, args, feature_size, num_actions, discrete=False):
         super(InverseModel, self).__init__()
-        self.model = torch.nn.Sequential(torch.nn.Linear(feature_size * 2, args.hidden_size),
-                                         torch.nn.ReLU(),
-                                         torch.nn.Linear(args.hidden_size, num_actions))
+        self.discrete = discrete
+        self.body = torch.nn.Sequential(
+            torch.nn.Linear(feature_size * 2, args.hidden_size),
+            torch.nn.ReLU(),
+        )
+        if self.discrete:
+            self.log_pr_linear = torch.nn.Linear(args.hidden_size, num_actions)
+        else:
+            self.mean_linear = torch.nn.Linear(args.hidden_size, num_actions)
+            self.log_std_linear = torch.nn.Linear(args.hidden_size, num_actions)
 
     def forward(self, z0, z1):
         context = torch.cat((z0, z1), -1)
-        return self.model(context)
+        shared_vector = self.body(context)
+
+        if self.discrete:
+            return self.log_pr_linear(shared_vector)
+        else:
+            mean = self.mean_linear(shared_vector)
+            log_std = self.log_std_linear(shared_vector)
+            log_std = torch.clamp(log_std, min=LOG_SIG_MIN, max=LOG_SIG_MAX)
+            std = log_std.exp()
+            return mean, std
 
 
 class ContrastiveModel(torch.nn.Module):
@@ -171,25 +185,38 @@ class MarkovHead(torch.nn.Module):
             The size of the abstract state
         - num_actions : Int
             The number of actions in the environment
-    
+
     Notes:
         - This does not support continuous action spaces right now. TODO
     """
     def __init__(self, args, feature_size, num_actions):
         super(MarkovHead, self).__init__()
-        self.inverse_model = InverseModel(args, feature_size, num_actions)
+        self.discrete = hasattr(args, 'discrete') and args.discrete
+        self.n_actions = num_actions
+
+        self.inverse_model = InverseModel(args, feature_size, num_actions, discrete=self.discrete)
         self.discriminator = ContrastiveModel(args, feature_size)
 
         self.bce = torch.nn.BCEWithLogitsLoss()
-        self.ce = torch.nn.CrossEntropyLoss()
+        if self.discrete:
+            self.ce = torch.nn.CrossEntropyLoss()
 
     def forward(self, *args, **kwargs):
         raise NotImplementedError
 
     def compute_markov_loss(self, z0, z1, a):
         # Inverse loss
-        log_pr_actions = self.inverse_model(z0, z1)
-        l_inverse = self.ce(input=log_pr_actions, target=a)
+        if self.discrete:
+            log_pr_actions = self.inverse_model(z0, z1)
+            l_inverse = self.ce(input=log_pr_actions, target=a)
+        else:
+            mean, std = self.inverse_model(z0, z1)
+
+            batchsize = len(z0)
+            cov = torch.diag_embed(std, dim1=1, dim2=2)
+            normal = torch.distributions.MultivariateNormal(loc=mean, covariance_matrix=cov)
+            log_pr_action = normal.log_prob(a)
+            l_inverse = -1*log_pr_action.mean(dim=0)
 
         # Ratio loss
         with torch.no_grad():
