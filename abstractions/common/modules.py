@@ -211,8 +211,6 @@ class MarkovHead(torch.nn.Module):
             l_inverse = self.ce(input=log_pr_actions, target=a)
         else:
             mean, std = self.inverse_model(z0, z1)
-
-            batchsize = len(z0)
             cov = torch.diag_embed(std, dim1=1, dim2=2)
             normal = torch.distributions.MultivariateNormal(loc=mean, covariance_matrix=cov)
             log_pr_action = normal.log_prob(a)
